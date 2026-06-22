@@ -4,19 +4,19 @@ import { prisma } from '../utils/prisma.client.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
-interface FacturaItemInput {
+interface InvoiceItemInput {
   productoId: string;
   cantidad: number;
   porcentajeImpuesto: number;
 }
 
-interface CrearFacturaBody {
+interface CreateInvoiceBody {
   clienteId: string;
-  detalles: FacturaItemInput[];
+  detalles: InvoiceItemInput[];
 }
 
-export const crearFactura = async (
-  req: Request<{}, {}, CrearFacturaBody>,
+export const createInvoice = async (
+  req: Request<{}, {}, CreateInvoiceBody>,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
@@ -24,7 +24,6 @@ export const crearFactura = async (
     const { clienteId, detalles } = req.body;
     const usuarioId = req.userId;
 
-    // 1. Validaciones iniciales
     if (!usuarioId) {
       res.status(401).json({
         success: false,
@@ -41,9 +40,7 @@ export const crearFactura = async (
       return;
     }
 
-    // 2. Ejecutar transacción interactiva
     const resultado = await prisma.$transaction(async (tx) => {
-      // Validar existencia de cliente
       const cliente = await tx.cliente.findUnique({
         where: { id: clienteId },
       });
@@ -51,7 +48,6 @@ export const crearFactura = async (
         throw new Error(`El cliente con ID ${clienteId} no existe.`);
       }
 
-      // Validar existencia de usuario emisor
       const usuario = await tx.user.findUnique({
         where: { id: usuarioId },
       });
@@ -76,7 +72,6 @@ export const crearFactura = async (
           throw new Error('El porcentaje de impuesto no puede ser negativo.');
         }
 
-        // Obtener producto del catálogo
         const producto = await tx.producto.findUnique({
           where: { id: productoId },
         });
@@ -89,12 +84,10 @@ export const crearFactura = async (
           throw new Error(`El producto '${producto.nombre}' está inactivo y no puede venderse.`);
         }
 
-        // Validar stock suficiente
         if (producto.stock < cantidad) {
           throw new Error(`Stock insuficiente para el producto '${producto.nombre}'. Stock disponible: ${producto.stock}, solicitado: ${cantidad}.`);
         }
 
-        // Congelar precio y nombre actual (inmutabilidad financiera)
         const precioUnitario = new Prisma.Decimal(producto.precio);
         const cantidadDecimal = new Prisma.Decimal(cantidad);
         const tasaImpuesto = new Prisma.Decimal(porcentajeImpuesto);
@@ -103,12 +96,10 @@ export const crearFactura = async (
         const montoImpuestoLinea = subtotalLinea.mul(tasaImpuesto.div(100));
         const totalLinea = subtotalLinea.add(montoImpuestoLinea);
 
-        // Acumular totales de la cabecera
         facturaSubtotal = facturaSubtotal.add(subtotalLinea);
         facturaTotalImpuestos = facturaTotalImpuestos.add(montoImpuestoLinea);
         facturaTotal = facturaTotal.add(totalLinea);
 
-        // Guardar detalle
         detallesData.push({
           producto: { connect: { id: producto.id } },
           nombreProducto: producto.nombre,
@@ -120,7 +111,6 @@ export const crearFactura = async (
           total: totalLinea,
         });
 
-        // Restar stock del producto de forma atómica y segura para evitar condiciones de carrera (Race Conditions)
         const updateResult = await tx.producto.updateMany({
           where: {
             id: productoId,
@@ -141,7 +131,6 @@ export const crearFactura = async (
         }
       }
 
-      // Generar consecutivo correlativo para factura EMITIDA
       let numeroFactura: string | null = null;
       const ultimaFactura = await tx.factura.findFirst({
         where: {
@@ -162,7 +151,6 @@ export const crearFactura = async (
         numeroFactura = 'FAC-000001';
       }
 
-      // Crear la cabecera de la factura en estado EMITIDA con detalles
       const nuevaFactura = await tx.factura.create({
         data: {
           numeroFactura,
@@ -249,7 +237,7 @@ export const login = async (
   }
 };
 
-export const getClientes = async (
+export const getClients = async (
   req: Request,
   res: Response,
   next: NextFunction
@@ -264,7 +252,7 @@ export const getClientes = async (
   }
 };
 
-export const getProductos = async (
+export const getProducts = async (
   req: Request,
   res: Response,
   next: NextFunction
@@ -280,7 +268,7 @@ export const getProductos = async (
   }
 };
 
-export const getFacturas = async (
+export const getInvoices = async (
   req: Request,
   res: Response,
   next: NextFunction
