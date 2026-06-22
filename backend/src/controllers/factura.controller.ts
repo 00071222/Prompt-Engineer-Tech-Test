@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { Prisma, EstadoFactura } from '@prisma/client';
 import { prisma } from '../utils/prisma.client.js';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 
 interface FacturaItemInput {
   productoId: string;
@@ -194,5 +196,55 @@ export const crearFactura = async (
       success: false,
       error: error.message || 'Error al procesar la factura en la base de datos.',
     });
+  }
+};
+
+export const login = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      res.status(400).json({ success: false, error: 'Email y contraseña requeridos.' });
+      return;
+    }
+
+    const usuario = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!usuario) {
+      res.status(401).json({ success: false, error: 'Credenciales inválidas.' });
+      return;
+    }
+
+    const validPassword = await bcrypt.compare(password, usuario.passwordHash);
+
+    if (!validPassword) {
+      res.status(401).json({ success: false, error: 'Credenciales inválidas.' });
+      return;
+    }
+
+    const JWT_SECRET = process.env.JWT_SECRET || 'secret-secreto-por-defecto';
+    const token = jwt.sign(
+      { userId: usuario.id, rol: usuario.rol },
+      JWT_SECRET,
+      { expiresIn: '8h' }
+    );
+
+    res.status(200).json({
+      success: true,
+      token,
+      user: {
+        id: usuario.id,
+        email: usuario.email,
+        rol: usuario.rol,
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message || 'Error en el servidor.' });
   }
 };
