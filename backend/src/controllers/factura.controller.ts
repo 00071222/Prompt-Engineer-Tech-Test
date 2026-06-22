@@ -118,13 +118,25 @@ export const crearFactura = async (
           total: totalLinea,
         });
 
-        // Restar stock del producto
-        await tx.producto.update({
-          where: { id: productoId },
+        // Restar stock del producto de forma atómica y segura para evitar condiciones de carrera (Race Conditions)
+        const updateResult = await tx.producto.updateMany({
+          where: {
+            id: productoId,
+            stock: { gte: cantidad },
+            activo: true,
+          },
           data: {
-            stock: producto.stock - cantidad,
+            stock: {
+              decrement: cantidad,
+            },
           },
         });
+
+        if (updateResult.count === 0) {
+          throw new Error(
+            `No se pudo actualizar el stock para '${producto.nombre}'. Posible stock insuficiente o producto inactivo debido a una compra concurrente.`
+          );
+        }
       }
 
       // Generar consecutivo correlativo para factura EMITIDA
