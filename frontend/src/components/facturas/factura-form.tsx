@@ -1,13 +1,15 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useUIStore } from '@/store/ui-store';
 import api from '@/lib/axios';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import AsyncCombobox from '../ui/async-combobox';
+import ClientModal from '../clients/client-modal';
 
 interface FacturaItemInput {
   productoId: string;
@@ -39,14 +41,7 @@ export default function FacturaForm() {
   const showLoader = useUIStore((state) => state.showLoader);
   const hideLoader = useUIStore((state) => state.hideLoader);
 
-  // Queries para traer los catálogos activos
-  const { data: clientesResponse, isLoading: loadingClientes } = useQuery({
-    queryKey: ['clientes'],
-    queryFn: async () => {
-      const res = await api.get<{ data: Cliente[] }>('/clientes');
-      return res.data.data;
-    },
-  });
+  // Query para traer los productos activos
 
   const { data: productosResponse, isLoading: loadingProductos } = useQuery({
     queryKey: ['productos'],
@@ -128,7 +123,7 @@ export default function FacturaForm() {
     }, 0);
   }, [watchDetalles, productosMap]);
 
-  if (loadingClientes || loadingProductos) {
+  if (loadingProductos) {
     return (
       <div className="flex justify-center items-center py-12">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent"></div>
@@ -138,7 +133,8 @@ export default function FacturaForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 text-slate-100">
+    <>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 text-slate-100">
       {formError && (
         <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-xs font-semibold text-rose-400 animate-in fade-in slide-in-from-top-2 duration-200">
           <div className="flex items-center gap-2">
@@ -150,31 +146,20 @@ export default function FacturaForm() {
         </div>
       )}
 
-      {/* Selector de Cliente */}
-      <div className="bg-slate-900/40 border border-slate-800/80 p-6 rounded-2xl space-y-4">
-        <div className="w-full flex flex-col gap-1.5">
-          <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider select-none">
-            Cliente Receptor
-          </label>
-          <select
-            {...register('clienteId', { required: 'Seleccione un cliente' })}
-            className={`w-full px-4 py-3 rounded-xl text-sm bg-slate-950 border text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 ${
-              errors.clienteId ? 'border-rose-500' : 'border-slate-800 focus:border-indigo-500'
-            }`}
-          >
-            <option value="">-- Seleccionar Cliente --</option>
-            {clientesResponse?.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.nombre} ({c.documentoId})
-              </option>
-            ))}
-          </select>
-          {errors.clienteId && (
-            <span className="text-xs font-semibold text-rose-500 mt-0.5">
-              {errors.clienteId.message}
-            </span>
+      {/* Selector de Cliente con Async Combobox */}
+      <div className="bg-slate-900/40 border border-slate-800/80 p-6 rounded-2xl">
+        <Controller
+          control={control}
+          name="clienteId"
+          rules={{ required: 'Seleccione un cliente receptor' }}
+          render={({ field }) => (
+            <AsyncCombobox
+              value={field.value}
+              onChange={field.onChange}
+              error={errors.clienteId?.message}
+            />
           )}
-        </div>
+        />
       </div>
 
       {/* Listado de Ítems */}
@@ -302,5 +287,7 @@ export default function FacturaForm() {
         </Button>
       </div>
     </form>
-  );
+    <ClientModal />
+  </>
+);
 }
