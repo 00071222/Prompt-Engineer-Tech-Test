@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { useQuery, useMutation } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
 import { useUIStore } from '@/store/ui-store';
 import api from '@/lib/axios';
 import { Input } from '@/components/ui/input';
@@ -33,6 +34,8 @@ interface Producto {
 }
 
 export default function FacturaForm() {
+  const router = useRouter();
+  const [formError, setFormError] = useState<string | null>(null);
   const showLoader = useUIStore((state) => state.showLoader);
   const hideLoader = useUIStore((state) => state.hideLoader);
 
@@ -82,7 +85,6 @@ export default function FacturaForm() {
   // Mutation para enviar y crear la factura
   const mutation = useMutation({
     mutationFn: async (data: FacturaFormValues) => {
-      showLoader();
       const res = await api.post('/facturas', {
         clienteId: data.clienteId,
         detalles: data.detalles.map((d) => ({
@@ -94,18 +96,22 @@ export default function FacturaForm() {
       return res.data;
     },
     onSuccess: () => {
-      hideLoader();
       alert('¡Factura emitida exitosamente!');
       reset();
-      window.location.href = '/';
+      router.push('/');
     },
     onError: (err: any) => {
+      const errorMsg = err.response?.data?.error || 'Error al emitir la factura.';
+      setFormError(errorMsg);
+    },
+    onSettled: () => {
       hideLoader();
-      alert(err.response?.data?.error || 'Error al emitir la factura.');
     },
   });
 
   const onSubmit = (data: FacturaFormValues) => {
+    setFormError(null);
+    showLoader();
     mutation.mutate(data);
   };
 
@@ -133,6 +139,17 @@ export default function FacturaForm() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 text-slate-100">
+      {formError && (
+        <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-xs font-semibold text-rose-400 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center gap-2">
+            <svg className="w-4 h-4 shrink-0 text-rose-450 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <span>{formError}</span>
+          </div>
+        </div>
+      )}
+
       {/* Selector de Cliente */}
       <div className="bg-slate-900/40 border border-slate-800/80 p-6 rounded-2xl space-y-4">
         <div className="w-full flex flex-col gap-1.5">

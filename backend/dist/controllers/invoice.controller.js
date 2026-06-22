@@ -95,7 +95,6 @@ export const createInvoice = async (req, res, next) => {
             let numeroFactura = null;
             const ultimaFactura = await tx.factura.findFirst({
                 where: {
-                    estado: EstadoFactura.EMITIDA,
                     numeroFactura: { not: null },
                 },
                 orderBy: { numeroFactura: 'desc' },
