@@ -26,14 +26,14 @@ export const TableRow = ({ children, className = '' }: { children: React.ReactNo
   </tr>
 );
 
-export const TableHead = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
-  <th className={`px-6 py-4.5 text-xs font-bold text-slate-400 uppercase tracking-wider ${className}`}>
+export const TableHead = ({ children, className = '', ...props }: React.ThHTMLAttributes<HTMLTableCellElement>) => (
+  <th className={`px-6 py-4.5 text-xs font-bold text-slate-400 uppercase tracking-wider ${className}`} {...props}>
     {children}
   </th>
 );
 
-export const TableCell = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
-  <td className={`px-6 py-4.5 text-slate-300 font-medium ${className}`}>
+export const TableCell = ({ children, className = '', ...props }: React.TdHTMLAttributes<HTMLTableCellElement>) => (
+  <td className={`px-6 py-4.5 text-slate-300 font-medium ${className}`} {...props}>
     {children}
   </td>
 );

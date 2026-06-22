@@ -259,7 +259,6 @@ export const getProducts = async (
 ): Promise<void> => {
   try {
     const productos = await prisma.producto.findMany({
-      where: { activo: true },
       orderBy: { nombre: 'asc' },
     });
     res.status(200).json({ success: true, data: productos });
@@ -288,5 +287,114 @@ export const getInvoices = async (
     res.status(200).json({ success: true, data: facturas });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message || 'Error al obtener las facturas.' });
+  }
+};
+
+export const createProduct = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { codigo, nombre, descripcion, precio, stock, activo } = req.body;
+
+    if (!codigo || !nombre || precio === undefined || stock === undefined) {
+      res.status(400).json({ success: false, error: 'Código, nombre, precio y stock son campos requeridos.' });
+      return;
+    }
+
+    if (parseFloat(precio) < 0) {
+      res.status(400).json({ success: false, error: 'El precio no puede ser negativo.' });
+      return;
+    }
+
+    if (parseInt(stock, 10) < 0) {
+      res.status(400).json({ success: false, error: 'El stock no puede ser negativo.' });
+      return;
+    }
+
+    const existing = await prisma.producto.findUnique({
+      where: { codigo },
+    });
+    if (existing) {
+      res.status(400).json({ success: false, error: `El producto con código '${codigo}' ya existe.` });
+      return;
+    }
+
+    const nuevoProducto = await prisma.producto.create({
+      data: {
+        codigo,
+        nombre,
+        descripcion,
+        precio: new Prisma.Decimal(precio),
+        stock: parseInt(stock, 10),
+        activo: activo !== undefined ? Boolean(activo) : true,
+      },
+    });
+
+    res.status(201).json({ success: true, data: nuevoProducto });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message || 'Error al crear el producto.' });
+  }
+};
+
+export const updateProduct = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { id } = req.params as { id: string };
+    const { codigo, nombre, descripcion, precio, stock, activo } = req.body;
+
+    if (!codigo || !nombre || precio === undefined || stock === undefined) {
+      res.status(400).json({ success: false, error: 'Código, nombre, precio y stock son campos requeridos.' });
+      return;
+    }
+
+    if (parseFloat(precio) < 0) {
+      res.status(400).json({ success: false, error: 'El precio no puede ser negativo.' });
+      return;
+    }
+
+    if (parseInt(stock, 10) < 0) {
+      res.status(400).json({ success: false, error: 'El stock no puede ser negativo.' });
+      return;
+    }
+
+    const existingProduct = await prisma.producto.findUnique({
+      where: { id },
+    });
+    if (!existingProduct) {
+      res.status(404).json({ success: false, error: 'El producto no existe.' });
+      return;
+    }
+
+    const duplicate = await prisma.producto.findFirst({
+      where: {
+        codigo,
+        id: { not: id },
+      },
+    });
+    if (duplicate) {
+      res.status(400).json({ success: false, error: `El código '${codigo}' ya está asignado a otro producto.` });
+      return;
+    }
+
+    const productoActualizado = await prisma.producto.update({
+      where: { id },
+      data: {
+        codigo,
+        nombre,
+        descripcion,
+        precio: new Prisma.Decimal(precio),
+        stock: parseInt(stock, 10),
+        activo: activo !== undefined ? Boolean(activo) : true,
+      },
+    });
+
+    res.status(200).json({ success: true, data: productoActualizado });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message || 'Error al actualizar el producto.' });
   }
 };
