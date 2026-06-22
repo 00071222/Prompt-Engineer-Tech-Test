@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { useForm, useFieldArray, Controller } from 'react-hook-form';
+import { useForm, useFieldArray, Controller, useWatch } from 'react-hook-form';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useUIStore } from '@/store/ui-store';
@@ -110,7 +110,7 @@ export default function FacturaForm() {
     mutation.mutate(data);
   };
 
-  const watchDetalles = watch('detalles');
+  const watchDetalles = useWatch({ control, name: 'detalles' }) || [];
 
   // Calcular total estimado de la factura en el lado del cliente (con fines visuales)
   const subtotalPredictivo = useMemo(() => {
