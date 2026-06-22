@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { getSession } from 'next-auth/react';
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api',
@@ -6,5 +7,19 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+// Interceptor de petición para inyectar dinámicamente el token JWT de la sesión de NextAuth
+api.interceptors.request.use(
+  async (config) => {
+    const session = await getSession();
+    if (session?.user?.token) {
+      config.headers.Authorization = `Bearer ${session.user.token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
 export default api;

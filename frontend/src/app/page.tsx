@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import React from "react";
 import LogoutButton from "@/components/shared/logout-button";
+import Link from "next/link";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -22,7 +23,15 @@ export default async function DashboardPage() {
             </h1>
             <p className="text-xs text-slate-400 mt-1">Facturación e Inventario Activo</p>
           </div>
-          <LogoutButton />
+          <div className="flex gap-2.5 items-center">
+            <Link
+              href="/invoices/new"
+              className="inline-flex items-center justify-center px-4 py-2.5 text-xs font-bold bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white rounded-xl transition-all duration-200 shadow-md shadow-indigo-600/10 hover:shadow-indigo-700/20 active:scale-[0.98] select-none cursor-pointer"
+            >
+              Emitir Factura
+            </Link>
+            <LogoutButton />
+          </div>
         </div>
 
         <div className="space-y-4">
