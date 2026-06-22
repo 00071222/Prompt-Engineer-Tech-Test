@@ -1,0 +1,149 @@
+import { Prisma, EstadoFactura } from '@prisma/client';
+import { prisma } from '../utils/prisma.client.js';
+export const crearFactura = async (req, res, next) => {
+    try {
+        const { clienteId, detalles } = req.body;
+        const usuarioId = req.userId;
+        // 1. Validaciones iniciales
+        if (!usuarioId) {
+            res.status(401).json({
+                success: false,
+                error: 'No autorizado. Trazabilidad de usuario requerida.',
+            });
+            return;
+        }
+        if (!clienteId || !detalles || !Array.isArray(detalles) || detalles.length === 0) {
+            res.status(400).json({
+                success: false,
+                error: 'Datos de entrada inválidos. Se requiere clienteId y un arreglo detalles no vacío.',
+            });
+            return;
+        }
+        // 2. Ejecutar transacción interactiva
+        const resultado = await prisma.$transaction(async (tx) => {
+            // Validar existencia de cliente
+            const cliente = await tx.cliente.findUnique({
+                where: { id: clienteId },
+            });
+            if (!cliente) {
+                throw new Error(`El cliente con ID ${clienteId} no existe.`);
+            }
+            // Validar existencia de usuario emisor
+            const usuario = await tx.user.findUnique({
+                where: { id: usuarioId },
+            });
+            if (!usuario) {
+                throw new Error(`El usuario emisor con ID ${usuarioId} no existe.`);
+            }
+            let facturaSubtotal = new Prisma.Decimal(0.0);
+            let facturaTotalImpuestos = new Prisma.Decimal(0.0);
+            let facturaTotal = new Prisma.Decimal(0.0);
+            const detallesData = [];
+            for (const item of detalles) {
+                const { productoId, cantidad, porcentajeImpuesto } = item;
+                if (cantidad <= 0) {
+                    throw new Error('La cantidad de cada producto debe ser mayor a cero.');
+                }
+                if (porcentajeImpuesto < 0) {
+                    throw new Error('El porcentaje de impuesto no puede ser negativo.');
+                }
+                // Obtener producto del catálogo
+                const producto = await tx.producto.findUnique({
+                    where: { id: productoId },
+                });
+                if (!producto) {
+                    throw new Error(`El producto con ID ${productoId} no existe.`);
+                }
+                if (!producto.activo) {
+                    throw new Error(`El producto '${producto.nombre}' está inactivo y no puede venderse.`);
+                }
+                // Validar stock suficiente
+                if (producto.stock < cantidad) {
+                    throw new Error(`Stock insuficiente para el producto '${producto.nombre}'. Stock disponible: ${producto.stock}, solicitado: ${cantidad}.`);
+                }
+                // Congelar precio y nombre actual (inmutabilidad financiera)
+                const precioUnitario = new Prisma.Decimal(producto.precio);
+                const cantidadDecimal = new Prisma.Decimal(cantidad);
+                const tasaImpuesto = new Prisma.Decimal(porcentajeImpuesto);
+                const subtotalLinea = precioUnitario.mul(cantidadDecimal);
+                const montoImpuestoLinea = subtotalLinea.mul(tasaImpuesto.div(100));
+                const totalLinea = subtotalLinea.add(montoImpuestoLinea);
+                // Acumular totales de la cabecera
+                facturaSubtotal = facturaSubtotal.add(subtotalLinea);
+                facturaTotalImpuestos = facturaTotalImpuestos.add(montoImpuestoLinea);
+                facturaTotal = facturaTotal.add(totalLinea);
+                // Guardar detalle
+                detallesData.push({
+                    producto: { connect: { id: producto.id } },
+                    nombreProducto: producto.nombre,
+                    cantidad,
+                    precioUnitario,
+                    porcentajeImpuesto: tasaImpuesto,
+                    montoImpuesto: montoImpuestoLinea,
+                    subtotal: subtotalLinea,
+                    total: totalLinea,
+                });
+                // Restar stock del producto
+                await tx.producto.update({
+                    where: { id: productoId },
+                    data: {
+                        stock: producto.stock - cantidad,
+                    },
+                });
+            }
+            // Generar consecutivo correlativo para factura EMITIDA
+            let numeroFactura = null;
+            const ultimaFactura = await tx.factura.findFirst({
+                where: {
+                    estado: EstadoFactura.EMITIDA,
+                    numeroFactura: { not: null },
+                },
+                orderBy: { numeroFactura: 'desc' },
+            });
+            if (ultimaFactura && ultimaFactura.numeroFactura) {
+                const ultimoNumero = parseInt(ultimaFactura.numeroFactura.replace('FAC-', ''), 10);
+                if (isNaN(ultimoNumero)) {
+                    numeroFactura = 'FAC-000001';
+                }
+                else {
+                    numeroFactura = `FAC-${String(ultimoNumero + 1).padStart(6, '0')}`;
+                }
+            }
+            else {
+                numeroFactura = 'FAC-000001';
+            }
+            // Crear la cabecera de la factura en estado EMITIDA con detalles
+            const nuevaFactura = await tx.factura.create({
+                data: {
+                    numeroFactura,
+                    estado: EstadoFactura.EMITIDA,
+                    fechaEmision: new Date(),
+                    subtotal: facturaSubtotal,
+                    totalImpuestos: facturaTotalImpuestos,
+                    total: facturaTotal,
+                    clienteId,
+                    usuarioId,
+                    detalles: {
+                        create: detallesData,
+                    },
+                },
+                include: {
+                    detalles: true,
+                    cliente: true,
+                },
+            });
+            return nuevaFactura;
+        });
+        res.status(201).json({
+            success: true,
+            message: 'Factura emitida exitosamente y stock actualizado.',
+            data: resultado,
+        });
+    }
+    catch (error) {
+        res.status(400).json({
+            success: false,
+            error: error.message || 'Error al procesar la factura en la base de datos.',
+        });
+    }
+};
