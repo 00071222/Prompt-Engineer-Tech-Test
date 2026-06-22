@@ -216,3 +216,22 @@ export const getProductos = async (req, res, next) => {
         res.status(500).json({ success: false, error: error.message || 'Error al obtener los productos.' });
     }
 };
+export const getFacturas = async (req, res, next) => {
+    try {
+        const facturas = await prisma.factura.findMany({
+            include: {
+                cliente: {
+                    select: {
+                        nombre: true,
+                        documentoId: true,
+                    },
+                },
+            },
+            orderBy: { createdAt: 'desc' },
+        });
+        res.status(200).json({ success: true, data: facturas });
+    }
+    catch (error) {
+        res.status(500).json({ success: false, error: error.message || 'Error al obtener las facturas.' });
+    }
+};
