@@ -1,53 +1,47 @@
 import { Request, Response, NextFunction } from 'express';
-import { PrismaClient, Prisma, EstadoFactura } from '@prisma/client';
-import { Pool } from 'pg';
-import { PrismaPg } from '@prisma/adapter-pg';
-import 'dotenv/config';
+import { Prisma, EstadoFactura } from '@prisma/client';
+import { prisma } from '../utils/prisma.client.js';
 
-// Inicialización del cliente utilizando el adaptador de base de datos de Prisma 7
-const connectionString = process.env.DATABASE_URL;
-const pool = new Pool({ connectionString });
-const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
-
-// Tipado de la petición
 interface FacturaItemInput {
   productoId: string;
   cantidad: number;
-  porcentajeImpuesto?: number; // IVA opcional, por defecto 16.00%
+  porcentajeImpuesto: number;
 }
 
-interface CrearFacturaRequest {
+interface CrearFacturaBody {
   clienteId: string;
-  usuarioId: string; // Para auditoría (quién generó la factura)
-  estado?: EstadoFactura; // BORRADOR o EMITIDA
-  items: FacturaItemInput[];
+  detalles: FacturaItemInput[];
 }
 
-/**
- * Controlador para la creación de facturas
- * POST /api/facturas
- */
 export const crearFactura = async (
-  req: Request<{}, {}, CrearFacturaRequest>,
+  req: Request<{}, {}, CrearFacturaBody>,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
   try {
-    const { clienteId, usuarioId, estado = EstadoFactura.EMITIDA, items } = req.body;
+    const { clienteId, detalles } = req.body;
+    const usuarioId = req.userId;
 
-    // 1. Validaciones iniciales del cuerpo de la petición
-    if (!clienteId || !usuarioId || !items || !Array.isArray(items) || items.length === 0) {
+    // 1. Validaciones iniciales
+    if (!usuarioId) {
+      res.status(401).json({
+        success: false,
+        error: 'No autorizado. Trazabilidad de usuario requerida.',
+      });
+      return;
+    }
+
+    if (!clienteId || !detalles || !Array.isArray(detalles) || detalles.length === 0) {
       res.status(400).json({
         success: false,
-        error: 'Datos de entrada inválidos. Se requiere clienteId, usuarioId y un arreglo de items no vacío.',
+        error: 'Datos de entrada inválidos. Se requiere clienteId y un arreglo detalles no vacío.',
       });
       return;
     }
 
     // 2. Ejecutar transacción interactiva
     const resultado = await prisma.$transaction(async (tx) => {
-      // A. Validar que el cliente exista
+      // Validar existencia de cliente
       const cliente = await tx.cliente.findUnique({
         where: { id: clienteId },
       });
@@ -55,7 +49,7 @@ export const crearFactura = async (
         throw new Error(`El cliente con ID ${clienteId} no existe.`);
       }
 
-      // B. Validar que el usuario emisor exista (auditoría)
+      // Validar existencia de usuario emisor
       const usuario = await tx.user.findUnique({
         where: { id: usuarioId },
       });
@@ -67,18 +61,20 @@ export const crearFactura = async (
       let facturaTotalImpuestos = new Prisma.Decimal(0.0);
       let facturaTotal = new Prisma.Decimal(0.0);
 
-      const detallesCrear: Prisma.FacturaDetalleCreateManyFacturaInput[] = [];
-      const productosAActualizar: { id: string; nuevoStock: number }[] = [];
+      const detallesData: Prisma.FacturaDetalleCreateWithoutFacturaInput[] = [];
 
-      // C. Validar inventario y calcular totales línea por línea
-      for (const item of items) {
-        const { productoId, cantidad, porcentajeImpuesto = 16.00 } = item;
+      for (const item of detalles) {
+        const { productoId, cantidad, porcentajeImpuesto } = item;
 
         if (cantidad <= 0) {
-          throw new Error(`La cantidad para el producto ${productoId} debe ser mayor a cero.`);
+          throw new Error('La cantidad de cada producto debe ser mayor a cero.');
         }
 
-        // Obtener el estado actual del producto en el catálogo
+        if (porcentajeImpuesto < 0) {
+          throw new Error('El porcentaje de impuesto no puede ser negativo.');
+        }
+
+        // Obtener producto del catálogo
         const producto = await tx.producto.findUnique({
           where: { id: productoId },
         });
@@ -88,118 +84,103 @@ export const crearFactura = async (
         }
 
         if (!producto.activo) {
-          throw new Error(`El producto ${producto.nombre} está descontinuado.`);
+          throw new Error(`El producto '${producto.nombre}' está inactivo y no puede venderse.`);
         }
 
-        // Validación estricta de stock
+        // Validar stock suficiente
         if (producto.stock < cantidad) {
-          throw new Error(`Stock insuficiente para el producto '${producto.nombre}'. Disponible: ${producto.stock}, Solicitado: ${cantidad}.`);
+          throw new Error(`Stock insuficiente para el producto '${producto.nombre}'. Stock disponible: ${producto.stock}, solicitado: ${cantidad}.`);
         }
 
-        // --- CONGELACIÓN HISTÓRICA DE PRECIOS E IMPUESTOS (El Cisne Negro) ---
+        // Congelar precio y nombre actual (inmutabilidad financiera)
         const precioUnitario = new Prisma.Decimal(producto.precio);
         const cantidadDecimal = new Prisma.Decimal(cantidad);
         const tasaImpuesto = new Prisma.Decimal(porcentajeImpuesto);
 
-        // Operaciones aritméticas de precisión utilizando Prisma.Decimal (decimal.js)
         const subtotalLinea = precioUnitario.mul(cantidadDecimal);
         const montoImpuestoLinea = subtotalLinea.mul(tasaImpuesto.div(100));
         const totalLinea = subtotalLinea.add(montoImpuestoLinea);
 
-        // Acumular los totales de la cabecera de la factura
+        // Acumular totales de la cabecera
         facturaSubtotal = facturaSubtotal.add(subtotalLinea);
         facturaTotalImpuestos = facturaTotalImpuestos.add(montoImpuestoLinea);
         facturaTotal = facturaTotal.add(totalLinea);
 
-        // Preparar la creación del detalle (sin el campo facturaId, ya que se creará de forma anidada)
-        detallesCrear.push({
-          productoId: producto.id,
-          nombreProducto: producto.nombre, // Congelamos el nombre comercial exacto
-          cantidad: cantidad,
-          precioUnitario: precioUnitario, // Congelamos el precio unitario exacto
+        // Guardar detalle
+        detallesData.push({
+          producto: { connect: { id: producto.id } },
+          nombreProducto: producto.nombre,
+          cantidad,
+          precioUnitario,
           porcentajeImpuesto: tasaImpuesto,
           montoImpuesto: montoImpuestoLinea,
           subtotal: subtotalLinea,
           total: totalLinea,
         });
 
-        // Registrar el nuevo stock para actualizarlo posteriormente dentro de la transacción
-        productosAActualizar.push({
-          id: producto.id,
-          nuevoStock: producto.stock - cantidad,
-        });
-      }
-
-      // D. Actualizar el stock en la base de datos para cada producto
-      for (const prod of productosAActualizar) {
+        // Restar stock del producto
         await tx.producto.update({
-          where: { id: prod.id },
-          data: { stock: prod.nuevoStock },
-        });
-      }
-
-      // E. Generar un número de factura correlativo si el estado es EMITIDA
-      let numeroFactura: string | null = null;
-      if (estado === EstadoFactura.EMITIDA) {
-        // Obtenemos la última factura emitida para generar el consecutivo
-        const ultimaFactura = await tx.factura.findFirst({
-          where: {
-            estado: EstadoFactura.EMITIDA,
-            numeroFactura: { not: null },
+          where: { id: productoId },
+          data: {
+            stock: producto.stock - cantidad,
           },
-          orderBy: { numeroFactura: 'desc' },
         });
-
-        if (ultimaFactura && ultimaFactura.numeroFactura) {
-          const ultimoNumero = parseInt(ultimaFactura.numeroFactura.replace('FAC-', ''), 10);
-          numeroFactura = `FAC-${String(ultimoNumero + 1).padStart(6, '0')}`;
-        } else {
-          numeroFactura = 'FAC-000001';
-        }
       }
 
-      // F. Crear la Factura y sus detalles anidados
+      // Generar consecutivo correlativo para factura EMITIDA
+      let numeroFactura: string | null = null;
+      const ultimaFactura = await tx.factura.findFirst({
+        where: {
+          estado: EstadoFactura.EMITIDA,
+          numeroFactura: { not: null },
+        },
+        orderBy: { numeroFactura: 'desc' },
+      });
+
+      if (ultimaFactura && ultimaFactura.numeroFactura) {
+        const ultimoNumero = parseInt(ultimaFactura.numeroFactura.replace('FAC-', ''), 10);
+        if (isNaN(ultimoNumero)) {
+          numeroFactura = 'FAC-000001';
+        } else {
+          numeroFactura = `FAC-${String(ultimoNumero + 1).padStart(6, '0')}`;
+        }
+      } else {
+        numeroFactura = 'FAC-000001';
+      }
+
+      // Crear la cabecera de la factura en estado EMITIDA con detalles
       const nuevaFactura = await tx.factura.create({
         data: {
           numeroFactura,
-          estado,
+          estado: EstadoFactura.EMITIDA,
+          fechaEmision: new Date(),
           subtotal: facturaSubtotal,
           totalImpuestos: facturaTotalImpuestos,
           total: facturaTotal,
           clienteId,
           usuarioId,
-          fechaEmision: estado === EstadoFactura.EMITIDA ? new Date() : null,
           detalles: {
-            createMany: {
-              data: detallesCrear,
-            },
+            create: detallesData,
           },
         },
         include: {
           detalles: true,
-          cliente: {
-            select: {
-              nombre: true,
-              documentoId: true,
-            },
-          },
+          cliente: true,
         },
       });
 
       return nuevaFactura;
     });
 
-    // 3. Respuesta de éxito
     res.status(201).json({
       success: true,
-      message: 'Factura creada exitosamente.',
+      message: 'Factura emitida exitosamente y stock actualizado.',
       data: resultado,
     });
   } catch (error: any) {
-    // 4. Manejo de errores y rollback de la transacción (automático por Prisma)
     res.status(400).json({
       success: false,
-      error: error.message || 'Error en las reglas de negocio al procesar la factura.',
+      error: error.message || 'Error al procesar la factura en la base de datos.',
     });
   }
 };
