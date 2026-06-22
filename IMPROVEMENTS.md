@@ -1,10 +1,10 @@
-# Plan de Mejoras y Producción (IMPROVEMENTS.md)
+# Plan de Mejoras y Producción
 
 Este documento detalla la hoja de ruta técnica y arquitectónica recomendada para elevar la presente aplicación a estándares de producción reales, garantizando seguridad, tolerancia a fallos, alta disponibilidad y cumplimiento normativo de auditoría financiera.
 
 ---
 
-## 🐳 1. Infraestructura, Contenerización y Orquestación
+## 1. Infraestructura, Contenerización y Orquestación
 
 ### Diagnóstico Actual
 La aplicación corre localmente sobre Node.js directo y asume dependencias instaladas en el sistema operativo local.
@@ -20,7 +20,7 @@ La aplicación corre localmente sobre Node.js directo y asume dependencias insta
 
 ---
 
-## ⚡ 2. Rendimiento, Escalabilidad y Caché
+## 2. Rendimiento, Escalabilidad y Caché
 
 ### Diagnóstico Actual
 Las consultas al catálogo de productos y clientes tocan de manera directa PostgreSQL en cada render o petición del frontend. Un pico de tráfico podría saturar el pool de conexiones de la base de datos física.
@@ -36,7 +36,7 @@ Las consultas al catálogo de productos y clientes tocan de manera directa Postg
 
 ---
 
-## 📥 3. Procesamiento Asíncrono y Desacoplamiento (Workers)
+## 3. Procesamiento Asíncrono y Desacoplamiento (Workers)
 
 ### Diagnóstico Actual
 La generación de PDFs, reportes fiscales o integraciones con pasarelas de pago se ejecutan de manera síncrona en el hilo principal. Operaciones de E/S de este tipo bloquean el *Event Loop* de Node.js, degradando el rendimiento del servidor completo.
@@ -52,7 +52,7 @@ La generación de PDFs, reportes fiscales o integraciones con pasarelas de pago 
 
 ---
 
-## 🛡️ 4. Validación robusta de Capa de Red (Network Middleware)
+## 4. Validación robusta de Capa de Red (Network Middleware)
 
 ### Diagnóstico Actual
 La entrada de datos se valida mediante condicionales `if` manuales. La falta de sanitización estricta expone la aplicación a datos inconsistentes y vulnerabilidades por payloads maliciosos.
@@ -87,7 +87,7 @@ La entrada de datos se valida mediante condicionales `if` manuales. La falta de 
 
 ---
 
-## 🔍 5. Auditoría Financiera y Registro Inmutable (Compliance)
+## 5. Auditoría Financiera y Registro Inmutable (Compliance)
 
 ### Diagnóstico Actual
 Si un administrador modifica los datos de un cliente o descontinúa un producto, no hay registros de versiones previas ni bitácoras de auditoría de modificaciones a nivel de base de datos.
@@ -100,9 +100,9 @@ Si un administrador modifica los datos de un cliente o descontinúa un producto,
 2. **Inmutabilidad Absoluta**:
    - Denegar explícitamente permisos de `DELETE` y `UPDATE` sobre la tabla `facturas` y `facturas_detalles` a nivel de base de datos mediante permisos de roles de base de datos (PostgreSQL Security Group Roles). Las facturas emitidas son inmutables por ley; cualquier corrección posterior debe realizarse emitiendo una Nota de Crédito (otra factura con importes negativos), garantizando la transparencia contable y el cumplimiento fiscal.
 
-# Nuevos Roles
 
-### 👥 1. Roles de Autenticación y Autorización (RBAC)
+## 6. Roles
+### 1. Roles de Autenticación y Autorización (RBAC)
 
 Actualmente la aplicación solo cuenta con un rol ADMIN que puede realizar todas las acciones. Es fundamental implementar un esquema de **Control de Acceso Basado en Roles (RBAC)** para separar las responsabilidades y mejorar la seguridad.
 
@@ -123,5 +123,8 @@ Actualmente la aplicación solo cuenta con un rol ADMIN que puede realizar todas
   - No puede realizar modificaciones.(futuro)
   - Puede ver el catálogo de productos para referencia.(futuro)
   
-### Modo dia
+## 7. Modo dia
 actualmente solo cuenta con un modo noche el cual esta activado por defecto al iniciar la aplicacion es necesario implementar el modo dia el cual se puede activar y desactivar mediante un boton el cual se encuentra ubicado en la barra lateral izquierda. (a futuro)
+
+## 8. Soft-delete
+Manejar todos los datos con un soft delete para mantener persistencia de la informacion y respaldo de la informacion historica.
