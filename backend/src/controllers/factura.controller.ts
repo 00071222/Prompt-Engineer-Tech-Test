@@ -248,3 +248,34 @@ export const login = async (
     res.status(500).json({ success: false, error: error.message || 'Error en el servidor.' });
   }
 };
+
+export const getClientes = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const clientes = await prisma.cliente.findMany({
+      orderBy: { nombre: 'asc' },
+    });
+    res.status(200).json({ success: true, data: clientes });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message || 'Error al obtener los clientes.' });
+  }
+};
+
+export const getProductos = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const productos = await prisma.producto.findMany({
+      where: { activo: true },
+      orderBy: { nombre: 'asc' },
+    });
+    res.status(200).json({ success: true, data: productos });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message || 'Error al obtener los productos.' });
+  }
+};

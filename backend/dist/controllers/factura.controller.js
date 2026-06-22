@@ -193,3 +193,26 @@ export const login = async (req, res, next) => {
         res.status(500).json({ success: false, error: error.message || 'Error en el servidor.' });
     }
 };
+export const getClientes = async (req, res, next) => {
+    try {
+        const clientes = await prisma.cliente.findMany({
+            orderBy: { nombre: 'asc' },
+        });
+        res.status(200).json({ success: true, data: clientes });
+    }
+    catch (error) {
+        res.status(500).json({ success: false, error: error.message || 'Error al obtener los clientes.' });
+    }
+};
+export const getProductos = async (req, res, next) => {
+    try {
+        const productos = await prisma.producto.findMany({
+            where: { activo: true },
+            orderBy: { nombre: 'asc' },
+        });
+        res.status(200).json({ success: true, data: productos });
+    }
+    catch (error) {
+        res.status(500).json({ success: false, error: error.message || 'Error al obtener los productos.' });
+    }
+};
