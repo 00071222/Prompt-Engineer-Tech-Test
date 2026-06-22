@@ -90,7 +90,17 @@ export const deleteClient = async (
       res.status(404).json({ success: false, error: 'Cliente no encontrado.' });
       return;
     }
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
+    // Prisma P2003 (FK constraint) o error nativo de PostgreSQL (driver adapter)
+    // Con PrismaPg el error llega como error raw de pg con mensaje de RESTRICT FK
+    if (
+      (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') ||
+      error?.cause?.code === '23503' ||
+      (typeof error?.message === 'string' && (
+        error.message.includes('23503') ||
+        error.message.includes('foreign key constraint') ||
+        error.message.includes('violates')
+      ))
+    ) {
       res.status(409).json({ success: false, error: 'No se puede eliminar el cliente porque tiene facturas asociadas.' });
       return;
     }
