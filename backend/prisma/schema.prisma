@@ -1,0 +1,129 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// Rol del usuario dentro de la plataforma para control de acceso (RBAC)
+enum Rol {
+  ADMIN
+  VENDEDOR
+  CONTADOR
+}
+
+/// Estados de la factura conforme al ciclo de vida comercial y legal
+enum EstadoFactura {
+  BORRADOR    // Factura en preparación, se puede editar o eliminar.
+  EMITIDA     // Documento legalmente emitido y congelado. A partir de aquí no se puede modificar.
+  PAGADA      // Transacción completada con cobro realizado.
+  ANULADA     // Factura cancelada/nota de crédito emitida. Mantiene valor legal histórico pero saldo neto cero.
+}
+
+/// Representa a los usuarios del sistema (Cajeros, Contadores, Administradores)
+model User {
+  id           String        @id @default(uuid())
+  email        String        @unique
+  passwordHash String        @map("password_hash")
+  rol          Rol           @default(VENDEDOR)
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  
+  // Relaciones
+  facturas     Factura[]     // Historial de facturas generadas por este usuario (trazabilidad)
+
+  @@map("users")
+}
+
+/// Representa a los clientes receptores de las facturas
+model Cliente {
+  id           String    @id @default(uuid())
+  documentoId  String    @unique @map("documento_id") // RFC, RUT, DNI, NIT, etc.
+  nombre       String
+  email        String?
+  telefono     String?
+  direccion    String?
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  
+  // Relaciones
+  facturas     Factura[]
+
+  @@map("clientes")
+}
+
+/// Representa el catálogo de productos con control de inventario
+model Producto {
+  id          String           @id @default(uuid())
+  codigo      String           @unique // Código SKU o código de barras
+  nombre      String
+  descripcion String?
+  precio      Decimal          @db.Decimal(12, 2) // Precio sugerido de venta actual
+  stock       Int              @default(0) // Control de stock en tiempo real
+  activo      Boolean          @default(true) // Borrado lógico para descontinuar productos
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+  
+  // Relaciones
+  detalles    FacturaDetalle[] // Referencias históricas (se usa onDelete: Restrict)
+
+  @@map("productos")
+}
+
+/// Cabecera del documento fiscal/factura
+model Factura {
+  id             String           @id @default(uuid())
+  numeroFactura  String?          @unique @map("numero_factura") // Folio correlativo oficial (puede ser nulo en BORRADOR)
+  fechaEmision   DateTime?        @map("fecha_emision") // Fecha oficial de emisión legal
+  estado         EstadoFactura    @default(BORRADOR)
+  
+  // Totales de la factura (congelados tras la emisión para inmutabilidad)
+  subtotal       Decimal          @default(0.00) @db.Decimal(12, 2)
+  totalImpuestos Decimal          @default(0.00) @db.Decimal(12, 2) @map("total_impuestos")
+  total          Decimal          @default(0.00) @db.Decimal(12, 2)
+  
+  // Relaciones
+  clienteId      String           @map("cliente_id")
+  cliente        Cliente          @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+  
+  usuarioId      String           @map("usuario_id")
+  usuario        User             @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+  
+  detalles       FacturaDetalle[]
+  
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  @@map("facturas")
+}
+
+/// Detalle individual (línea de ítem) de la factura
+model FacturaDetalle {
+  id             String   @id @default(uuid())
+  facturaId      String   @map("factura_id")
+  factura        Factura  @relation(fields: [facturaId], references: [id], onDelete: Cascade)
+  
+  // FK física al producto. Es nullable para permitir borrados históricos excepcionales, 
+  // pero protegido por Restrict por defecto para conservar la integridad física.
+  productoId     String?  @map("producto_id")
+  producto       Producto? @relation(fields: [productoId], references: [id], onDelete: Restrict)
+  
+  // --- EL CISNE NEGRO: DATOS HISTÓRICOS CONGELADOS EN EL MOMENTO DE LA EMISIÓN ---
+  nombreProducto String   @map("nombre_producto") // Resguarda el nombre del producto si el catálogo se actualiza o elimina
+  cantidad       Int
+  precioUnitario Decimal  @db.Decimal(12, 2) @map("precio_unitario") // Precio congelado al momento exacto de la venta
+  
+  // Impuestos parametrizables por línea (IVA, Retenciones, etc.)
+  porcentajeImpuesto Decimal @db.Decimal(5, 2) @map("porcentaje_impuesto") // Ej. 16.00 (16% de IVA)
+  montoImpuesto      Decimal @db.Decimal(12, 2) @map("monto_impuesto") // Calculado: (precioUnitario * cantidad) * (porcentajeImpuesto / 100)
+  
+  // Totales calculados a nivel de línea
+  subtotal       Decimal  @db.Decimal(12, 2) // precioUnitario * cantidad
+  total          Decimal  @db.Decimal(12, 2) // subtotal + montoImpuesto
+
+  @@map("facturas_detalles")
+}
