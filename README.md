@@ -19,14 +19,10 @@ Este proyecto es una plataforma completa de facturación y control de stock en t
 - **TanStack Query** (React Query) para la sincronización de estado del servidor
 - **Auth.js (NextAuth v5)** para gestión segura de sesiones e interceptores JWT
 
----
-
 ## 📋 Requisitos Previos
 - **Node.js**: Versión v20 o superior
 - **PostgreSQL**: Base de datos activa y accesible local o remotamente
 - **pnpm**: Versión v11 o superior (gestor de paquetes recomendado)
-
----
 
 ## 🚀 Guía de Instalación Rápida
 
@@ -46,8 +42,6 @@ Crea un archivo `.env.local` en la raíz de la carpeta `frontend/` con las sigui
 AUTH_SECRET="clave_secreta_aleatoria_para_encriptar_la_sesion"
 NEXT_PUBLIC_API_URL="http://localhost:3001/api"
 ```
-
----
 
 ### 2. Puesta en Marcha del Backend
 Desde una terminal en la carpeta `/backend`:
@@ -91,4 +85,6 @@ El panel de control estará accesible en: **`http://localhost:3000`**
 
 > **Para producción:** ejecuta `pnpm build && pnpm start` en lugar de `pnpm dev`.
 
----
+## 🔑 Credenciales de Seed
+- **Email**: admin@empresa.com
+- **Password**: admin123

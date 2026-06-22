@@ -60,6 +60,13 @@ async function main() {
   });
 
   // 4. Creación de Productos
+  // Los stocks reflejan el estado POST-VENTA (ya descontadas las unidades
+  // de las facturas EMITIDA y PAGADA sembradas a continuación):
+  //   - MSI:     50 unidades (solo aparece en BORRADOR, no se descuenta)
+  //   - Pixel:   19 unidades (20 iniciales - 1 vendida en FAC-000001 EMITIDA)
+  //   - Razer:   29 unidades (30 iniciales - 1 vendida en FAC-000002 PAGADA)
+  //   - Samsung: 97 unidades (100 iniciales - 3 vendidas: 2 en BORRADOR [no descuenta] + 1 en PAGADA)
+  //   Nota: el BORRADOR no descuenta stock; solo EMITIDA y PAGADA lo hacen.
   console.log('Sembrando catálogo de productos...');
   const msi = await prisma.producto.create({
     data: {
@@ -67,7 +74,7 @@ async function main() {
       nombre: 'Monitor MSI Optix 240Hz',
       descripcion: 'Monitor gamer de alto rendimiento de 24 pulgadas FHD.',
       precio: new Prisma.Decimal(299.99),
-      stock: 50,
+      stock: 50,  // Sin ventas emitidas; aparece solo en BORRADOR
       activo: true,
     },
   });
@@ -78,7 +85,7 @@ async function main() {
       nombre: 'Teclado Razer Huntsman V2 8kHz Polling Rate',
       descripcion: 'Teclado óptico analógico para juegos con tasa de sondeo ultra rápida.',
       precio: new Prisma.Decimal(189.99),
-      stock: 30,
+      stock: 29,  // 30 iniciales - 1 en FAC-000002 (PAGADA)
       activo: true,
     },
   });
@@ -89,7 +96,7 @@ async function main() {
       nombre: 'Google Pixel 8',
       descripcion: 'Smartphone de Google con cámara de última generación e inteligencia artificial.',
       precio: new Prisma.Decimal(699.00),
-      stock: 20,
+      stock: 19,  // 20 iniciales - 1 en FAC-000001 (EMITIDA)
       activo: true,
     },
   });
@@ -100,7 +107,7 @@ async function main() {
       nombre: 'Cargador Samsung 25W USB-C',
       descripcion: 'Cargador de pared de carga rápida con entrada tipo C.',
       precio: new Prisma.Decimal(19.99),
-      stock: 100,
+      stock: 99,  // 100 iniciales - 1 en FAC-000002 (PAGADA). Los 2 del BORRADOR no descuentan.
       activo: true,
     },
   });
@@ -208,6 +215,37 @@ async function main() {
             montoImpuesto: new Prisma.Decimal(3.20),
             subtotal: new Prisma.Decimal(19.99),
             total: new Prisma.Decimal(23.19),
+          },
+        ],
+      },
+    },
+  });
+
+  // Factura 4: ANULADA (cubre el cuarto estado del enum EstadoFactura)
+  // Una factura anulada mantiene registro histórico pero su saldo neto es cero.
+  // El stock NO se descuenta (fue anulada antes o durante la emisión).
+  console.log('Creando Factura 4: ANULADA...');
+  await prisma.factura.create({
+    data: {
+      estado: EstadoFactura.ANULADA,
+      numeroFactura: 'FAC-000003',
+      fechaEmision: new Date(),
+      subtotal: new Prisma.Decimal(189.99),
+      totalImpuestos: new Prisma.Decimal(30.40),
+      total: new Prisma.Decimal(220.39),
+      clienteId: cliente2.id,
+      usuarioId: admin.id,
+      detalles: {
+        create: [
+          {
+            productoId: razer.id,
+            nombreProducto: razer.nombre,
+            cantidad: 1,
+            precioUnitario: razer.precio,
+            porcentajeImpuesto: new Prisma.Decimal(16.00),
+            montoImpuesto: new Prisma.Decimal(30.40),
+            subtotal: new Prisma.Decimal(189.99),
+            total: new Prisma.Decimal(220.39),
           },
         ],
       },
