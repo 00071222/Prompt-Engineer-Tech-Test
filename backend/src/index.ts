@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import 'dotenv/config';
 import invoiceRouter from './routes/invoice.routes.js';
+import clienteRouter from './routes/cliente.routes.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -12,6 +13,7 @@ app.use(express.json());
 
 // Montar rutas bajo el prefijo /api
 app.use('/api', invoiceRouter);
+app.use('/api', clienteRouter);
 
 // Ruta de estado simple para verificar que el servicio responda
 app.get('/health', (req, res) => {

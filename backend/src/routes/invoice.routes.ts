@@ -16,7 +16,6 @@ const router = Router();
 router.post('/auth/login', login);
 
 // Protected catalog endpoints
-router.get('/clientes', authMiddleware, getClients);
 router.get('/productos', authMiddleware, getProducts);
 router.get('/facturas', authMiddleware, getInvoices);
 
