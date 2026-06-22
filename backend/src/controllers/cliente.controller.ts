@@ -36,6 +36,68 @@ export const getClients = async (
   }
 };
 
+export const updateClient = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const id = String(req.params.id);
+    const { documentoId, nombre, email, telefono, direccion } = req.body;
+
+    if (!documentoId || !nombre) {
+      res.status(400).json({ success: false, error: 'El documentoId y nombre son requeridos.' });
+      return;
+    }
+
+    const clienteActualizado = await prisma.cliente.update({
+      where: { id },
+      data: {
+        documentoId,
+        nombre,
+        email: email || null,
+        telefono: telefono || null,
+        direccion: direccion || null,
+      },
+    });
+
+    res.status(200).json({ success: true, data: clienteActualizado });
+  } catch (error: any) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      res.status(400).json({ success: false, error: `El documentoId '${req.body.documentoId}' ya está registrado en otro cliente.` });
+      return;
+    }
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+      res.status(404).json({ success: false, error: 'Cliente no encontrado.' });
+      return;
+    }
+    res.status(500).json({ success: false, error: error.message || 'Error al actualizar el cliente.' });
+  }
+};
+
+export const deleteClient = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const id = String(req.params.id);
+
+    await prisma.cliente.delete({ where: { id } });
+    res.status(200).json({ success: true, message: 'Cliente eliminado correctamente.' });
+  } catch (error: any) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+      res.status(404).json({ success: false, error: 'Cliente no encontrado.' });
+      return;
+    }
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
+      res.status(409).json({ success: false, error: 'No se puede eliminar el cliente porque tiene facturas asociadas.' });
+      return;
+    }
+    res.status(500).json({ success: false, error: error.message || 'Error al eliminar el cliente.' });
+  }
+};
+
 export const createClient = async (
   req: Request,
   res: Response,

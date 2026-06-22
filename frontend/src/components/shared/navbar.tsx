@@ -10,10 +10,12 @@ export default function Navbar() {
   const { logout } = useAuthActions();
 
   const links = [
-    { name: 'Dashboard (Invoices)', href: '/invoices' },
-    { name: 'Products', href: '/products' },
-    { name: 'Profile', href: '/profile' },
+    { name: 'Facturas', href: '/invoices' },
+    { name: 'Clientes', href: '/clients' },
+    { name: 'Productos', href: '/products' },
+    { name: 'Perfil', href: '/profile' },
   ];
+
 
   return (
     <nav className="w-full bg-slate-900/40 border-b border-slate-800 backdrop-blur-md sticky top-0 z-40">
@@ -31,7 +33,7 @@ export default function Navbar() {
             {/* Navigation Links */}
             <div className="hidden md:flex items-center gap-6">
               {links.map((link) => {
-                const isActive = pathname.startsWith(link.href) || (link.href === '/invoices' && pathname === '/');
+                const isActive = pathname.startsWith(link.href) || (link.href === '/invoices' && (pathname === '/' || pathname === '/invoices'));
                 return (
                   <Link
                     key={link.href}

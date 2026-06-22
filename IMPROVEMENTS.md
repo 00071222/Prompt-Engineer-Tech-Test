@@ -99,3 +99,29 @@ Si un administrador modifica los datos de un cliente o descontinúa un producto,
    - Cualquier sentencia `UPDATE` o `DELETE` copia de forma instantánea el estado anterior del registro en la tabla espejo, capturando el ID de sesión, acción de base de datos (`UPDATE`/`DELETE`) y la marca de tiempo de la operación.
 2. **Inmutabilidad Absoluta**:
    - Denegar explícitamente permisos de `DELETE` y `UPDATE` sobre la tabla `facturas` y `facturas_detalles` a nivel de base de datos mediante permisos de roles de base de datos (PostgreSQL Security Group Roles). Las facturas emitidas son inmutables por ley; cualquier corrección posterior debe realizarse emitiendo una Nota de Crédito (otra factura con importes negativos), garantizando la transparencia contable y el cumplimiento fiscal.
+
+# Nuevos Roles
+
+### 👥 1. Roles de Autenticación y Autorización (RBAC)
+
+Actualmente la aplicación solo cuenta con un rol ADMIN que puede realizar todas las acciones. Es fundamental implementar un esquema de **Control de Acceso Basado en Roles (RBAC)** para separar las responsabilidades y mejorar la seguridad.
+
+- **Administrador**:
+  - Puede crear, editar y deshabilitar productos.
+  - Puede crear, editar y deshabilitar clientes.
+  - Puede ver y gestionar todas las facturas.
+  - Puede ver todos los usuarios.
+  - Puede gestionar roles y permisos (futuro).
+
+- **Editor/Contable**:
+  - Puede crear y editar facturas.(futuro)
+  - Puede editar productos y clientes (control de inventario).(futuro)
+  - No puede ver información sensible como salarios o datos de empleados (si se implementan en el futuro).(futuro)
+
+- **Cliente/Solo Lectura**:
+  - Puede ver sus propias facturas.(futuro)
+  - No puede realizar modificaciones.(futuro)
+  - Puede ver el catálogo de productos para referencia.(futuro)
+  
+### Modo dia
+actualmente solo cuenta con un modo noche el cual esta activado por defecto al iniciar la aplicacion es necesario implementar el modo dia el cual se puede activar y desactivar mediante un boton el cual se encuentra ubicado en la barra lateral izquierda. (a futuro)
