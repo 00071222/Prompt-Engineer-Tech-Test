@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useForm, useFieldArray, Controller, useWatch } from 'react-hook-form';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
@@ -35,7 +35,7 @@ interface Producto {
   stock: number;
 }
 
-export default function FacturaForm() {
+export default function FacturaForm({ invoiceId }: { invoiceId?: string }) {
   const router = useRouter();
   const [formError, setFormError] = useState<string | null>(null);
   const showLoader = useUIStore((state) => state.showLoader);
@@ -77,26 +77,60 @@ export default function FacturaForm() {
     name: 'detalles',
   });
 
-  // Mutation para enviar y crear la factura
+  const [submitStatus, setSubmitStatus] = useState<'BORRADOR' | 'EMITIDA'>('EMITIDA');
+
+  // Query para traer el borrador en caso de edición
+  const { data: draftInvoice, isLoading: loadingDraft } = useQuery({
+    queryKey: ['invoice', invoiceId],
+    queryFn: async () => {
+      const res = await api.get<{ data: any }>(`/facturas/${invoiceId}`);
+      return res.data.data;
+    },
+    enabled: !!invoiceId,
+  });
+
+  // Pre-llenar el formulario cuando se cargue el borrador
+  useEffect(() => {
+    if (draftInvoice) {
+      reset({
+        clienteId: draftInvoice.clienteId,
+        detalles: draftInvoice.detalles.map((d: any) => ({
+          productoId: d.productoId,
+          cantidad: d.cantidad,
+          porcentajeImpuesto: parseFloat(d.porcentajeImpuesto),
+        })),
+      });
+    }
+  }, [draftInvoice, reset]);
+
+  // Mutation para enviar y crear la factura (o actualizar borrador)
   const mutation = useMutation({
-    mutationFn: async (data: FacturaFormValues) => {
-      const res = await api.post('/facturas', {
+    mutationFn: async (data: FacturaFormValues & { estado: 'BORRADOR' | 'EMITIDA' }) => {
+      const payload = {
         clienteId: data.clienteId,
         detalles: data.detalles.map((d) => ({
           productoId: d.productoId,
           cantidad: Number(d.cantidad),
           porcentajeImpuesto: Number(d.porcentajeImpuesto),
         })),
-      });
-      return res.data;
+        estado: data.estado,
+      };
+
+      if (invoiceId) {
+        const res = await api.put(`/facturas/${invoiceId}`, payload);
+        return res.data;
+      } else {
+        const res = await api.post('/facturas', payload);
+        return res.data;
+      }
     },
-    onSuccess: () => {
-      alert('¡Factura emitida exitosamente!');
+    onSuccess: (res) => {
+      alert(res.message || 'Factura procesada con éxito.');
       reset();
       router.push('/');
     },
     onError: (err: any) => {
-      const errorMsg = err.response?.data?.error || 'Error al emitir la factura.';
+      const errorMsg = err.response?.data?.error || 'Error al procesar la factura.';
       setFormError(errorMsg);
     },
     onSettled: () => {
@@ -107,7 +141,7 @@ export default function FacturaForm() {
   const onSubmit = (data: FacturaFormValues) => {
     setFormError(null);
     showLoader();
-    mutation.mutate(data);
+    mutation.mutate({ ...data, estado: submitStatus });
   };
 
   const watchDetalles = useWatch({ control, name: 'detalles' }) || [];
@@ -123,11 +157,13 @@ export default function FacturaForm() {
     }, 0);
   }, [watchDetalles, productosMap]);
 
-  if (loadingProductos) {
+  const isLoadingPage = loadingProductos || (!!invoiceId && loadingDraft);
+
+  if (isLoadingPage) {
     return (
       <div className="flex justify-center items-center py-12">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent"></div>
-        <span className="ml-3 text-sm text-slate-400">Cargando catálogos de venta...</span>
+        <span className="ml-3 text-sm text-slate-400">Cargando datos de facturación...</span>
       </div>
     );
   }
@@ -278,13 +314,25 @@ export default function FacturaForm() {
           </p>
         </div>
 
-        <Button
-          type="submit"
-          isLoading={mutation.isPending}
-          className="w-full md:w-auto px-8 py-3.5"
-        >
-          Crear Factura
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+          <Button
+            type="submit"
+            variant="secondary"
+            onClick={() => setSubmitStatus('BORRADOR')}
+            isLoading={mutation.isPending && submitStatus === 'BORRADOR'}
+            className="w-full sm:w-auto px-6 py-3.5"
+          >
+            Guardar Borrador
+          </Button>
+          <Button
+            type="submit"
+            onClick={() => setSubmitStatus('EMITIDA')}
+            isLoading={mutation.isPending && submitStatus === 'EMITIDA'}
+            className="w-full sm:w-auto px-8 py-3.5"
+          >
+            {invoiceId ? 'Emitir Factura' : 'Crear Factura'}
+          </Button>
+        </div>
       </div>
     </form>
     <ClientModal />

@@ -4,6 +4,7 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/axios';
 import { Badge } from '@/components/ui/badge';
+import Link from 'next/link';
 import {
   Table,
   TableHeader,
@@ -65,6 +66,7 @@ export default function InvoiceList() {
               <TableHead>Fecha Emisión</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead className="text-right">Total</TableHead>
+              <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -87,6 +89,9 @@ export default function InvoiceList() {
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="ml-auto h-4 w-20 rounded bg-slate-800"></div>
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="ml-auto h-8 w-16 rounded bg-slate-800/40"></div>
                 </TableCell>
               </TableRow>
             ))}
@@ -128,6 +133,7 @@ export default function InvoiceList() {
           <TableHead>Fecha Emisión</TableHead>
           <TableHead>Estado</TableHead>
           <TableHead className="text-right">Total</TableHead>
+          <TableHead className="text-right">Acciones</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -152,6 +158,18 @@ export default function InvoiceList() {
             </TableCell>
             <TableCell className="text-right font-mono font-bold text-slate-100">
               {formatCurrency(invoice.total)}
+            </TableCell>
+            <TableCell className="text-right">
+              {invoice.estado === 'BORRADOR' ? (
+                <Link
+                  href={`/invoices/${invoice.id}/edit`}
+                  className="inline-flex px-3 py-1.5 rounded-lg border border-indigo-500/20 bg-indigo-500/10 text-xs font-bold text-indigo-400 hover:bg-indigo-650 hover:text-white transition-all select-none cursor-pointer"
+                >
+                  Editar
+                </Link>
+              ) : (
+                <span className="text-xs text-slate-600 select-none">—</span>
+              )}
             </TableCell>
           </TableRow>
         ))}

@@ -13,6 +13,7 @@ interface InvoiceItemInput {
 interface CreateInvoiceBody {
   clienteId: string;
   detalles: InvoiceItemInput[];
+  estado?: EstadoFactura;
 }
 
 export const createInvoice = async (
@@ -21,7 +22,7 @@ export const createInvoice = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const { clienteId, detalles } = req.body;
+    const { clienteId, detalles, estado } = req.body;
     const usuarioId = req.userId;
 
     if (!usuarioId) {
@@ -39,6 +40,8 @@ export const createInvoice = async (
       });
       return;
     }
+
+    const targetEstado = estado === 'BORRADOR' ? EstadoFactura.BORRADOR : EstadoFactura.EMITIDA;
 
     const resultado = await prisma.$transaction(async (tx) => {
       const cliente = await tx.cliente.findUnique({
@@ -80,12 +83,14 @@ export const createInvoice = async (
           throw new Error(`El producto con ID ${productoId} no existe.`);
         }
 
-        if (!producto.activo) {
-          throw new Error(`El producto '${producto.nombre}' está inactivo y no puede venderse.`);
-        }
-
-        if (producto.stock < cantidad) {
-          throw new Error(`Stock insuficiente para el producto '${producto.nombre}'. Stock disponible: ${producto.stock}, solicitado: ${cantidad}.`);
+        // Si se emite de inmediato, validar stock y estado activo del producto
+        if (targetEstado === EstadoFactura.EMITIDA) {
+          if (!producto.activo) {
+            throw new Error(`El producto '${producto.nombre}' está inactivo y no puede venderse.`);
+          }
+          if (producto.stock < cantidad) {
+            throw new Error(`Stock insuficiente para el producto '${producto.nombre}'. Stock disponible: ${producto.stock}, solicitado: ${cantidad}.`);
+          }
         }
 
         const precioUnitario = new Prisma.Decimal(producto.precio);
@@ -111,50 +116,56 @@ export const createInvoice = async (
           total: totalLinea,
         });
 
-        const updateResult = await tx.producto.updateMany({
-          where: {
-            id: productoId,
-            stock: { gte: cantidad },
-            activo: true,
-          },
-          data: {
-            stock: {
-              decrement: cantidad,
+        // Decrementar stock solo si la factura se emite de inmediato
+        if (targetEstado === EstadoFactura.EMITIDA) {
+          const updateResult = await tx.producto.updateMany({
+            where: {
+              id: productoId,
+              stock: { gte: cantidad },
+              activo: true,
             },
-          },
-        });
+            data: {
+              stock: {
+                decrement: cantidad,
+              },
+            },
+          });
 
-        if (updateResult.count === 0) {
-          throw new Error(
-            `No se pudo actualizar el stock para '${producto.nombre}'. Posible stock insuficiente o producto inactivo debido a una compra concurrente.`
-          );
+          if (updateResult.count === 0) {
+            throw new Error(
+              `No se pudo actualizar el stock para '${producto.nombre}'. Posible stock insuficiente o producto inactivo debido a una compra concurrente.`
+            );
+          }
         }
       }
 
+      // Generar correlativo oficial solo para facturas emitidas
       let numeroFactura: string | null = null;
-      const ultimaFactura = await tx.factura.findFirst({
-        where: {
-          numeroFactura: { not: null },
-        },
-        orderBy: { numeroFactura: 'desc' },
-      });
+      if (targetEstado === EstadoFactura.EMITIDA) {
+        const ultimaFactura = await tx.factura.findFirst({
+          where: {
+            numeroFactura: { not: null },
+          },
+          orderBy: { numeroFactura: 'desc' },
+        });
 
-      if (ultimaFactura && ultimaFactura.numeroFactura) {
-        const ultimoNumero = parseInt(ultimaFactura.numeroFactura.replace('FAC-', ''), 10);
-        if (isNaN(ultimoNumero)) {
-          numeroFactura = 'FAC-000001';
+        if (ultimaFactura && ultimaFactura.numeroFactura) {
+          const ultimoNumero = parseInt(ultimaFactura.numeroFactura.replace('FAC-', ''), 10);
+          if (isNaN(ultimoNumero)) {
+            numeroFactura = 'FAC-000001';
+          } else {
+            numeroFactura = `FAC-${String(ultimoNumero + 1).padStart(6, '0')}`;
+          }
         } else {
-          numeroFactura = `FAC-${String(ultimoNumero + 1).padStart(6, '0')}`;
+          numeroFactura = 'FAC-000001';
         }
-      } else {
-        numeroFactura = 'FAC-000001';
       }
 
       const nuevaFactura = await tx.factura.create({
         data: {
           numeroFactura,
-          estado: EstadoFactura.EMITIDA,
-          fechaEmision: new Date(),
+          estado: targetEstado,
+          fechaEmision: targetEstado === EstadoFactura.EMITIDA ? new Date() : null,
           subtotal: facturaSubtotal,
           totalImpuestos: facturaTotalImpuestos,
           total: facturaTotal,
@@ -175,7 +186,7 @@ export const createInvoice = async (
 
     res.status(201).json({
       success: true,
-      message: 'Factura emitida exitosamente y stock actualizado.',
+      message: targetEstado === EstadoFactura.EMITIDA ? 'Factura emitida exitosamente y stock actualizado.' : 'Borrador guardado con éxito.',
       data: resultado,
     });
   } catch (error: any) {
@@ -395,5 +406,227 @@ export const updateProduct = async (
     res.status(200).json({ success: true, data: productoActualizado });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message || 'Error al actualizar el producto.' });
+  }
+};
+
+export const getInvoiceById = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { id } = req.params as { id: string };
+
+    const factura = await prisma.factura.findUnique({
+      where: { id },
+      include: {
+        cliente: true,
+        detalles: {
+          include: {
+            producto: true,
+          },
+        },
+      },
+    });
+
+    if (!factura) {
+      res.status(404).json({ success: false, error: 'La factura no existe.' });
+      return;
+    }
+
+    res.status(200).json({ success: true, data: factura });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message || 'Error al obtener la factura.' });
+  }
+};
+
+export const updateInvoice = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { id } = req.params as { id: string };
+    const { clienteId, detalles, estado } = req.body;
+    const usuarioId = req.userId;
+
+    if (!usuarioId) {
+      res.status(401).json({ success: false, error: 'No autorizado. Trazabilidad de usuario requerida.' });
+      return;
+    }
+
+    if (!clienteId || !detalles || !Array.isArray(detalles) || detalles.length === 0) {
+      res.status(400).json({ success: false, error: 'Datos de entrada inválidos.' });
+      return;
+    }
+
+    const targetEstado = estado === 'EMITIDA' ? EstadoFactura.EMITIDA : EstadoFactura.BORRADOR;
+
+    const existingInvoice = await prisma.factura.findUnique({
+      where: { id },
+    });
+
+    if (!existingInvoice) {
+      res.status(404).json({ success: false, error: 'La factura no existe.' });
+      return;
+    }
+
+    if (existingInvoice.estado !== EstadoFactura.BORRADOR) {
+      res.status(400).json({ success: false, error: 'La factura ya fue emitida y es inmutable.' });
+      return;
+    }
+
+    const resultado = await prisma.$transaction(async (tx) => {
+      // 1. Eliminar ítems previos de la factura
+      await tx.facturaDetalle.deleteMany({
+        where: { facturaId: id },
+      });
+
+      // 2. Validar existencia del cliente
+      const cliente = await tx.cliente.findUnique({
+        where: { id: clienteId },
+      });
+      if (!cliente) {
+        throw new Error(`El cliente con ID ${clienteId} no existe.`);
+      }
+
+      let facturaSubtotal = new Prisma.Decimal(0.0);
+      let facturaTotalImpuestos = new Prisma.Decimal(0.0);
+      let facturaTotal = new Prisma.Decimal(0.0);
+
+      const detallesData: Prisma.FacturaDetalleCreateWithoutFacturaInput[] = [];
+
+      for (const item of detalles) {
+        const { productoId, cantidad, porcentajeImpuesto } = item;
+
+        if (cantidad <= 0) {
+          throw new Error('La cantidad de cada producto debe ser mayor a cero.');
+        }
+
+        if (porcentajeImpuesto < 0) {
+          throw new Error('El porcentaje de impuesto no puede ser negativo.');
+        }
+
+        const producto = await tx.producto.findUnique({
+          where: { id: productoId },
+        });
+
+        if (!producto) {
+          throw new Error(`El producto con ID ${productoId} no existe.`);
+        }
+
+        // Si se emite el borrador, validar stock y estado activo del producto
+        if (targetEstado === EstadoFactura.EMITIDA) {
+          if (!producto.activo) {
+            throw new Error(`El producto '${producto.nombre}' está inactivo y no puede venderse.`);
+          }
+          if (producto.stock < cantidad) {
+            throw new Error(`Stock insuficiente para el producto '${producto.nombre}'. Stock disponible: ${producto.stock}, solicitado: ${cantidad}.`);
+          }
+        }
+
+        const precioUnitario = new Prisma.Decimal(producto.precio);
+        const cantidadDecimal = new Prisma.Decimal(cantidad);
+        const tasaImpuesto = new Prisma.Decimal(porcentajeImpuesto);
+
+        const subtotalLinea = precioUnitario.mul(cantidadDecimal);
+        const montoImpuestoLinea = subtotalLinea.mul(tasaImpuesto.div(100));
+        const totalLinea = subtotalLinea.add(montoImpuestoLinea);
+
+        facturaSubtotal = facturaSubtotal.add(subtotalLinea);
+        facturaTotalImpuestos = facturaTotalImpuestos.add(montoImpuestoLinea);
+        facturaTotal = facturaTotal.add(totalLinea);
+
+        detallesData.push({
+          producto: { connect: { id: producto.id } },
+          nombreProducto: producto.nombre,
+          cantidad,
+          precioUnitario,
+          porcentajeImpuesto: tasaImpuesto,
+          montoImpuesto: montoImpuestoLinea,
+          subtotal: subtotalLinea,
+          total: totalLinea,
+        });
+
+        // Decrementar stock solo al emitir la factura oficialmente
+        if (targetEstado === EstadoFactura.EMITIDA) {
+          const updateResult = await tx.producto.updateMany({
+            where: {
+              id: productoId,
+              stock: { gte: cantidad },
+              activo: true,
+            },
+            data: {
+              stock: {
+                decrement: cantidad,
+              },
+            },
+          });
+
+          if (updateResult.count === 0) {
+            throw new Error(
+              `No se pudo actualizar el stock para '${producto.nombre}'. Posible stock insuficiente o producto inactivo debido a una compra concurrente.`
+            );
+          }
+        }
+      }
+
+      // Generar correlativo si cambia a EMITIDA y no tenía asignado uno
+      let numeroFactura = existingInvoice.numeroFactura;
+      if (targetEstado === EstadoFactura.EMITIDA && !numeroFactura) {
+        const ultimaFactura = await tx.factura.findFirst({
+          where: {
+            numeroFactura: { not: null },
+          },
+          orderBy: { numeroFactura: 'desc' },
+        });
+
+        if (ultimaFactura && ultimaFactura.numeroFactura) {
+          const ultimoNumero = parseInt(ultimaFactura.numeroFactura.replace('FAC-', ''), 10);
+          if (isNaN(ultimoNumero)) {
+            numeroFactura = 'FAC-000001';
+          } else {
+            numeroFactura = `FAC-${String(ultimoNumero + 1).padStart(6, '0')}`;
+          }
+        } else {
+          numeroFactura = 'FAC-000001';
+        }
+      }
+
+      // Actualizar la factura
+      const facturaActualizada = await tx.factura.update({
+        where: { id },
+        data: {
+          numeroFactura,
+          estado: targetEstado,
+          fechaEmision: targetEstado === EstadoFactura.EMITIDA ? new Date() : existingInvoice.fechaEmision,
+          subtotal: facturaSubtotal,
+          totalImpuestos: facturaTotalImpuestos,
+          total: facturaTotal,
+          clienteId,
+          usuarioId,
+          detalles: {
+            create: detallesData,
+          },
+        },
+        include: {
+          detalles: true,
+          cliente: true,
+        },
+      });
+
+      return facturaActualizada;
+    });
+
+    res.status(200).json({
+      success: true,
+      message: targetEstado === EstadoFactura.EMITIDA ? 'Factura emitida y stock actualizado.' : 'Borrador actualizado con éxito.',
+      data: resultado,
+    });
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      error: error.message || 'Error al actualizar la factura.',
+    });
   }
 };
