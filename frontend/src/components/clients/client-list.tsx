@@ -309,8 +309,8 @@ export default function ClientList() {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Documento ID</TableHead>
-            <TableHead>Nombre / Razón Social</TableHead>
+            <TableHead>ID</TableHead>
+            <TableHead>Nombre</TableHead>
             <TableHead>Correo</TableHead>
             <TableHead>Teléfono</TableHead>
             <TableHead>Dirección</TableHead>

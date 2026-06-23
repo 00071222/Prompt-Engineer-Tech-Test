@@ -19,7 +19,7 @@ export default async function ProductsPage() {
       <div className="flex justify-between items-center border-b border-card-border pb-5">
         <div>
           <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-indigo-900 to-indigo-600 dark:from-indigo-200 dark:to-indigo-400 bg-clip-text text-transparent">
-            Products Inventory Catalog
+            Inventario
           </h1>
           <p className="text-xs text-muted-foreground mt-1">
             Catálogo general de productos y control de stock en tiempo real
