@@ -1,31 +1,28 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { useTheme } from 'next-themes';
 
 export default function ThemeToggle() {
-  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+  const { theme, setTheme, resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
 
+  // Prevents hydration mismatch between server-rendered and client-rendered icons
   useEffect(() => {
-    // Determine initial theme from root element class list asynchronously
-    const isLight = document.documentElement.classList.contains('light');
     const frame = requestAnimationFrame(() => {
-      setTheme(isLight ? 'light' : 'dark');
+      setMounted(true);
     });
     return () => cancelAnimationFrame(frame);
   }, []);
 
+  if (!mounted) {
+    return <div className="w-10 h-10 rounded-xl border border-card-border bg-card-muted/50" />;
+  }
+
+  const currentTheme = resolvedTheme || theme || 'dark';
+
   const toggleTheme = () => {
-    const nextTheme = theme === 'dark' ? 'light' : 'dark';
-    setTheme(nextTheme);
-    if (nextTheme === 'light') {
-      document.documentElement.classList.add('light');
-      document.documentElement.classList.remove('dark');
-      localStorage.theme = 'light';
-    } else {
-      document.documentElement.classList.add('dark');
-      document.documentElement.classList.remove('light');
-      localStorage.theme = 'dark';
-    }
+    setTheme(currentTheme === 'dark' ? 'light' : 'dark');
   };
 
   return (
@@ -37,7 +34,7 @@ export default function ThemeToggle() {
       {/* Sun Icon */}
       <svg
         className={`w-5 h-5 transition-all duration-500 absolute ${
-          theme === 'dark' ? 'rotate-90 scale-0 opacity-0' : 'rotate-0 scale-100 opacity-100'
+          currentTheme === 'dark' ? 'rotate-90 scale-0 opacity-0' : 'rotate-0 scale-100 opacity-100'
         }`}
         fill="none"
         stroke="currentColor"
@@ -54,7 +51,7 @@ export default function ThemeToggle() {
       {/* Moon Icon */}
       <svg
         className={`w-5 h-5 transition-all duration-500 absolute ${
-          theme === 'dark' ? 'rotate-0 scale-100 opacity-100' : '-rotate-90 scale-0 opacity-0'
+          currentTheme === 'dark' ? 'rotate-0 scale-100 opacity-100' : '-rotate-90 scale-0 opacity-0'
         }`}
         fill="none"
         stroke="currentColor"
