@@ -86,5 +86,7 @@ El panel de control estará accesible en: **`http://localhost:3000`**
 > **Para producción:** ejecuta `pnpm build && pnpm start` en lugar de `pnpm dev`.
 
 ## 🔑 Credenciales de Seed
-- **Email**: admin@empresa.com
-- **Password**: admin123
+- **Email**:
+<pre>admin@empresa.com</pre>
+- **Password**:
+<pre>admin123</pre>
