@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuthActions } from '@/hooks/use-auth-actions';
 import ThemeToggle from './theme-toggle';
+import { buttonStyles } from '@/components/ui/button';
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -62,9 +63,9 @@ export default function Navbar() {
             <ThemeToggle />
             <button
               onClick={logout}
-              className="px-4 py-2 rounded-xl border border-rose-500/20 bg-rose-500/10 hover:bg-rose-500/20 text-xs font-bold text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 transition-all duration-200 select-none cursor-pointer active:scale-95 shadow-sm"
+              className={buttonStyles('destructive', 'sm')}
             >
-              Sign Out
+              Cerrar Sesión
             </button>
           </div>
 
@@ -116,9 +117,9 @@ export default function Navbar() {
                 setIsMobileMenuOpen(false);
                 logout();
               }}
-              className="w-full text-center px-4 py-2.5 rounded-xl border border-rose-500/20 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 text-xs font-bold transition-all duration-200 active:scale-[0.98] select-none cursor-pointer"
+              className={`w-full text-center justify-center ${buttonStyles('destructive', 'sm')}`}
             >
-              Sign Out
+              Cerrar Sesión
             </button>
           </div>
         </div>
