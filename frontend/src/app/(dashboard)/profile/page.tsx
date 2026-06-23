@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import React from "react";
+import { Badge } from "@/components/ui/badge";
 
 export default async function ProfilePage() {
   const session = await auth();
@@ -40,9 +41,9 @@ export default async function ProfilePage() {
             <div className="text-center sm:text-left">
               <h3 className="text-base font-bold text-foreground">{userName}</h3>
               <p className="text-xs text-muted-foreground mt-0.5">{userEmail}</p>
-              <span className="inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 mt-2">
+              <Badge variant="indigo" className="mt-2 text-[10px]">
                 {session.user.rol}
-              </span>
+              </Badge>
             </div>
           </div>
 
@@ -72,7 +73,7 @@ export default async function ProfilePage() {
               {/* Rol Field */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider select-none">
-                  Rol / Perfil
+                  Rol
                 </label>
                 <div className="px-4 py-2.5 rounded-xl bg-card-muted/50 border border-card-border text-sm text-foreground/80 font-medium">
                   {session.user.rol}

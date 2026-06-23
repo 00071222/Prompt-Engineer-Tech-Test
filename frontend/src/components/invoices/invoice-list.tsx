@@ -4,6 +4,7 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/axios';
 import { Badge } from '@/components/ui/badge';
+import { TableButton } from '@/components/ui/table-button';
 import Link from 'next/link';
 import {
   Table,
@@ -161,12 +162,13 @@ export default function InvoiceList() {
             </TableCell>
             <TableCell className="text-right">
               {invoice.estado === 'BORRADOR' ? (
-                <Link
+                <TableButton
+                  as={Link}
                   href={`/invoices/${invoice.id}/edit`}
-                  className="inline-flex px-3 py-1.5 rounded-lg border border-indigo-500/20 bg-indigo-500/10 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-600 hover:text-white transition-all select-none cursor-pointer duration-200 active:scale-95"
+                  variant="edit"
                 >
                   Editar
-                </Link>
+                </TableButton>
               ) : (
                 <span className="text-xs text-muted-foreground/50 select-none">—</span>
               )}

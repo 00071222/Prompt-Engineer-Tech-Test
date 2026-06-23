@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useForm } from 'react-hook-form';
 import { Client } from '@/store/client-modal-store';
+import { TableButton } from '@/components/ui/table-button';
 
 /* ───────────────────── Types ───────────────────── */
 interface ClientFormValues {
@@ -354,19 +355,18 @@ export default function ClientList() {
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-2">
-                    <Button
-                      variant="secondary"
+                    <TableButton
                       onClick={() => setEditingClient(client)}
-                      className="px-3.5 py-1.5 text-xs font-bold"
+                      variant="edit"
                     >
                       Editar
-                    </Button>
-                    <button
+                    </TableButton>
+                    <TableButton
                       onClick={() => setDeletingClient(client)}
-                      className="px-3.5 py-1.5 text-xs font-bold rounded-xl border border-rose-500/20 bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-600 hover:text-white hover:border-rose-600 transition-all select-none cursor-pointer duration-200 active:scale-95"
+                      variant="delete"
                     >
                       Eliminar
-                    </button>
+                    </TableButton>
                   </div>
                 </TableCell>
               </TableRow>

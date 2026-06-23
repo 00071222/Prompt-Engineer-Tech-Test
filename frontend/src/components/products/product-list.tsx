@@ -6,7 +6,7 @@ import { useProductStore, Product } from '@/store/product-store';
 import api from '@/lib/axios';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { TableButton } from '@/components/ui/table-button';
 
 const SkeletonRow = () => (
   <TableRow className="animate-pulse">
@@ -94,13 +94,12 @@ export default function ProductList() {
                 </Badge>
               </TableCell>
               <TableCell className="text-right">
-                <Button
-                  variant="secondary"
+                <TableButton
                   onClick={() => openEditModal(product)}
-                  className="px-3.5 py-1.5 text-xs font-bold"
+                  variant="edit"
                 >
                   Editar
-                </Button>
+                </TableButton>
               </TableCell>
             </TableRow>
           ))
