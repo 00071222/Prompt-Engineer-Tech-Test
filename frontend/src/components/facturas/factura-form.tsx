@@ -22,12 +22,6 @@ interface FacturaFormValues {
   detalles: FacturaItemInput[];
 }
 
-interface Cliente {
-  id: string;
-  nombre: string;
-  documentoId: string;
-}
-
 interface Producto {
   id: string;
   nombre: string;
@@ -62,7 +56,6 @@ export default function FacturaForm({ invoiceId }: { invoiceId?: string }) {
     register,
     control,
     handleSubmit,
-    watch,
     reset,
     formState: { errors },
   } = useForm<FacturaFormValues>({
@@ -83,6 +76,7 @@ export default function FacturaForm({ invoiceId }: { invoiceId?: string }) {
   const { data: draftInvoice, isLoading: loadingDraft } = useQuery({
     queryKey: ['invoice', invoiceId],
     queryFn: async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const res = await api.get<{ data: any }>(`/facturas/${invoiceId}`);
       return res.data.data;
     },
@@ -94,6 +88,7 @@ export default function FacturaForm({ invoiceId }: { invoiceId?: string }) {
     if (draftInvoice) {
       reset({
         clienteId: draftInvoice.clienteId,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         detalles: draftInvoice.detalles.map((d: any) => ({
           productoId: d.productoId,
           cantidad: d.cantidad,
@@ -129,6 +124,7 @@ export default function FacturaForm({ invoiceId }: { invoiceId?: string }) {
       reset();
       router.push('/');
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onError: (err: any) => {
       const errorMsg = err.response?.data?.error || 'Error al procesar la factura.';
       setFormError(errorMsg);
@@ -144,11 +140,13 @@ export default function FacturaForm({ invoiceId }: { invoiceId?: string }) {
     mutation.mutate({ ...data, estado: submitStatus });
   };
 
-  const watchDetalles = useWatch({ control, name: 'detalles' }) || [];
+  const watchDetalles = useWatch({ control, name: 'detalles' });
 
   // Calcular total estimado de la factura en el lado del cliente (con fines visuales)
   const subtotalPredictivo = useMemo(() => {
-    return watchDetalles.reduce((acc, current) => {
+    const details = watchDetalles || [];
+    return details.reduce((acc, current) => {
+      if (!current) return acc;
       const prod = productosMap.get(current.productoId);
       if (!prod) return acc;
       const precio = parseFloat(prod.precio) || 0;
@@ -163,18 +161,18 @@ export default function FacturaForm({ invoiceId }: { invoiceId?: string }) {
     return (
       <div className="flex justify-center items-center py-12">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent"></div>
-        <span className="ml-3 text-sm text-slate-400">Cargando datos de facturación...</span>
+        <span className="ml-3 text-sm text-muted-foreground">Cargando datos de facturación...</span>
       </div>
     );
   }
 
   return (
     <>
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 text-slate-100">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 text-foreground">
       {formError && (
-        <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-xs font-semibold text-rose-400 animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-xs font-semibold text-rose-600 dark:text-rose-400 animate-in fade-in slide-in-from-top-2 duration-200">
           <div className="flex items-center gap-2">
-            <svg className="w-4 h-4 shrink-0 text-rose-450 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
             <span>{formError}</span>
@@ -183,7 +181,7 @@ export default function FacturaForm({ invoiceId }: { invoiceId?: string }) {
       )}
 
       {/* Selector de Cliente con Async Combobox */}
-      <div className="bg-slate-900/40 border border-slate-800/80 p-6 rounded-2xl">
+      <div className="bg-card border border-card-border p-6 rounded-2xl transition-all duration-300">
         <Controller
           control={control}
           name="clienteId"
@@ -199,9 +197,9 @@ export default function FacturaForm({ invoiceId }: { invoiceId?: string }) {
       </div>
 
       {/* Listado de Ítems */}
-      <div className="bg-slate-900/40 border border-slate-800/80 p-6 rounded-2xl space-y-6">
-        <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-          <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">Detalles de la Venta</h3>
+      <div className="bg-card border border-card-border p-6 rounded-2xl space-y-6 transition-all duration-300">
+        <div className="flex justify-between items-center border-b border-card-border pb-3">
+          <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">Detalles de la Venta</h3>
           <Button
             type="button"
             variant="secondary"
@@ -222,16 +220,16 @@ export default function FacturaForm({ invoiceId }: { invoiceId?: string }) {
             return (
               <div
                 key={field.id}
-                className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end border border-slate-800/60 bg-slate-950/40 p-4 rounded-xl relative animate-in fade-in zoom-in-95 duration-150"
+                className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end border border-card-border bg-card-muted/30 p-4 rounded-xl relative animate-in fade-in zoom-in-95 duration-150"
               >
                 {/* Selector de Producto */}
                 <div className="md:col-span-4 flex flex-col gap-1.5">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider select-none">
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider select-none">
                     Producto #{index + 1}
                   </label>
                   <select
                     {...register(`detalles.${index}.productoId` as const, { required: 'Requerido' })}
-                    className="w-full px-4 py-3 rounded-xl text-sm bg-slate-950 border border-slate-800 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 focus:border-indigo-500"
+                    className="w-full px-4 py-3 rounded-xl text-sm bg-input-bg border border-input-border text-foreground placeholder-muted-foreground/60 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 focus:border-indigo-500"
                   >
                     <option value="">-- Seleccionar --</option>
                     {productosResponse?.map((p) => (
@@ -272,9 +270,9 @@ export default function FacturaForm({ invoiceId }: { invoiceId?: string }) {
                 </div>
 
                 {/* Vista Previa Predictiva */}
-                <div className="md:col-span-3 flex flex-col justify-end p-2 bg-slate-900/60 rounded-xl border border-slate-800 h-[46px]">
-                  <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider leading-none">Previsualización</span>
-                  <span className="text-sm font-semibold text-slate-300 mt-1 leading-none">
+                <div className="md:col-span-3 flex flex-col justify-end p-2 bg-card rounded-xl border border-card-border h-[46px]">
+                  <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-wider leading-none">Previsualización</span>
+                  <span className="text-sm font-semibold text-foreground/80 mt-1 leading-none">
                     {currentItem?.productoId ? (
                       `$${precioUnitario.toFixed(2)} c/u → $${itemSubtotal.toFixed(2)}`
                     ) : (
@@ -288,7 +286,7 @@ export default function FacturaForm({ invoiceId }: { invoiceId?: string }) {
                   <button
                     type="button"
                     disabled={fields.length === 1}
-                    className="p-3 text-slate-500 hover:text-rose-500 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                    className="p-3 text-muted-foreground hover:text-rose-500 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
                     onClick={() => remove(index)}
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -303,13 +301,13 @@ export default function FacturaForm({ invoiceId }: { invoiceId?: string }) {
       </div>
 
       {/* Footer del Formulario */}
-      <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-slate-900/40 border border-slate-800/80 p-6 rounded-2xl">
+      <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-card border border-card-border p-6 rounded-2xl transition-all duration-300">
         {/* El Cisne Negro Visual */}
         <div className="flex flex-col text-left max-w-md">
-          <span className="text-xs text-indigo-400 font-bold uppercase tracking-widest">
+          <span className="text-xs text-indigo-600 dark:text-indigo-400 font-bold uppercase tracking-widest">
             Subtotal Estimado: ${subtotalPredictivo.toFixed(2)}
           </span>
-          <p className="text-[9px] text-slate-500 italic mt-1.5 leading-relaxed">
+          <p className="text-[9px] text-muted-foreground italic mt-1.5 leading-relaxed">
             * Esta UI es solo predictiva; la fuente de la verdad de los precios, impuestos y la inmutabilidad financiera reside estrictamente en el backend.
           </p>
         </div>

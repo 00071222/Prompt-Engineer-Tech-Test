@@ -12,6 +12,7 @@ declare module "next-auth" {
   interface Session extends DefaultSession {
     user: CustomUser & DefaultSession["user"];
   }
+  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
   interface User extends CustomUser {}
 }
 

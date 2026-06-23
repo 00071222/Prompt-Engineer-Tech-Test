@@ -8,6 +8,18 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
+const SkeletonRow = () => (
+  <TableRow className="animate-pulse">
+    <TableCell><div className="h-4 bg-card-muted rounded w-20"></div></TableCell>
+    <TableCell><div className="h-4 bg-card-muted rounded w-40"></div></TableCell>
+    <TableCell><div className="h-4 bg-card-muted rounded w-48"></div></TableCell>
+    <TableCell><div className="h-4 bg-card-muted rounded w-16"></div></TableCell>
+    <TableCell><div className="h-4 bg-card-muted rounded w-12"></div></TableCell>
+    <TableCell><div className="h-6 bg-card-muted rounded w-16"></div></TableCell>
+    <TableCell><div className="h-8 bg-card-muted/80 rounded w-16"></div></TableCell>
+  </TableRow>
+);
+
 export default function ProductList() {
   const openEditModal = useProductStore((state) => state.openEditModal);
 
@@ -26,18 +38,6 @@ export default function ProductList() {
       currency: 'USD',
     }).format(num);
   };
-
-  const SkeletonRow = () => (
-    <TableRow className="animate-pulse">
-      <TableCell><div className="h-4 bg-slate-800/80 rounded w-20"></div></TableCell>
-      <TableCell><div className="h-4 bg-slate-800/80 rounded w-40"></div></TableCell>
-      <TableCell><div className="h-4 bg-slate-800/80 rounded w-48"></div></TableCell>
-      <TableCell><div className="h-4 bg-slate-800/80 rounded w-16"></div></TableCell>
-      <TableCell><div className="h-4 bg-slate-800/80 rounded w-12"></div></TableCell>
-      <TableCell><div className="h-6 bg-slate-800/80 rounded w-16"></div></TableCell>
-      <TableCell><div className="h-8 bg-slate-800/80 rounded w-16"></div></TableCell>
-    </TableRow>
-  );
 
   if (error) {
     return (
@@ -71,20 +71,20 @@ export default function ProductList() {
         ) : products && products.length > 0 ? (
           products.map((product) => (
             <TableRow key={product.id}>
-              <TableCell className="font-mono text-xs text-indigo-400 select-all font-semibold">
+              <TableCell className="font-mono text-xs text-indigo-600 dark:text-indigo-400 select-all font-bold animate-in fade-in duration-200">
                 {product.codigo}
               </TableCell>
-              <TableCell className="text-slate-205 font-bold">
+              <TableCell className="text-foreground font-bold">
                 {product.nombre}
               </TableCell>
-              <TableCell className="text-slate-450 text-xs font-normal max-w-xs truncate">
-                {product.descripcion || <span className="text-slate-600 italic">Sin descripción</span>}
+              <TableCell className="text-muted-foreground text-xs font-normal max-w-xs truncate">
+                {product.descripcion || <span className="text-muted-foreground/60 italic">Sin descripción</span>}
               </TableCell>
-              <TableCell className="font-semibold text-slate-100">
+              <TableCell className="font-bold text-foreground">
                 {formatCurrency(product.precio)}
               </TableCell>
               <TableCell>
-                <span className={`font-semibold ${product.stock <= 5 ? 'text-amber-500 font-extrabold' : 'text-slate-300'}`}>
+                <span className={`font-semibold ${product.stock <= 5 ? 'text-amber-500 font-extrabold' : 'text-foreground/80'}`}>
                   {product.stock}
                 </span>
               </TableCell>
@@ -97,7 +97,7 @@ export default function ProductList() {
                 <Button
                   variant="secondary"
                   onClick={() => openEditModal(product)}
-                  className="px-3.5 py-1.5 text-xs font-bold bg-slate-800 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all select-none cursor-pointer"
+                  className="px-3.5 py-1.5 text-xs font-bold"
                 >
                   Editar
                 </Button>
@@ -106,7 +106,7 @@ export default function ProductList() {
           ))
         ) : (
           <TableRow>
-            <TableCell colSpan={7} className="text-center py-10 text-slate-500 italic select-none">
+            <TableCell colSpan={7} className="text-center py-10 text-muted-foreground italic select-none">
               No hay productos registrados en la base de datos.
             </TableCell>
           </TableRow>

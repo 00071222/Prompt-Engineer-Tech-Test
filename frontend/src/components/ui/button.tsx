@@ -13,11 +13,11 @@ export const Button: React.FC<ButtonProps> = ({
   disabled,
   ...props
 }) => {
-  const baseStyles = 'inline-flex items-center justify-center px-5 py-3 text-sm font-semibold rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed select-none cursor-pointer';
+  const baseStyles = 'inline-flex items-center justify-center px-5 py-3 text-sm font-semibold rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 disabled:opacity-50 disabled:cursor-not-allowed select-none cursor-pointer';
   
   const variants = {
-    primary: 'bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white focus:ring-indigo-500 shadow-lg shadow-indigo-600/20 active:scale-[0.98]',
-    secondary: 'bg-slate-800 hover:bg-slate-700 active:bg-slate-900 text-slate-100 border border-slate-700/60 focus:ring-slate-500 active:scale-[0.98]',
+    primary: 'bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white focus:ring-indigo-500 shadow-lg shadow-indigo-600/10 active:scale-[0.98]',
+    secondary: 'bg-card hover:bg-card-muted active:bg-card-muted/80 text-foreground border border-card-border focus:ring-indigo-500 active:scale-[0.98]',
   };
 
   return (

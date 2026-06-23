@@ -47,14 +47,20 @@ export default function AsyncCombobox({ value, onChange, error }: AsyncComboboxP
 
   // Update selected client if we can find it in the current data
   useEffect(() => {
+    let active = true;
     if (value && clients) {
       const match = clients.find((c) => c.id === value);
       if (match) {
-        setSelectedClient(match);
+        requestAnimationFrame(() => {
+          if (active) setSelectedClient(match);
+        });
       }
     } else if (!value) {
-      setSelectedClient(null);
+      requestAnimationFrame(() => {
+        if (active) setSelectedClient(null);
+      });
     }
+    return () => { active = false; };
   }, [value, clients]);
 
   const handleSelectClient = (client: Client) => {
@@ -80,21 +86,21 @@ export default function AsyncCombobox({ value, onChange, error }: AsyncComboboxP
 
   return (
     <div ref={containerRef} className="w-full flex flex-col gap-1.5 relative">
-      <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider select-none">
+      <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider select-none">
         Cliente Receptor
       </label>
 
       {selectedClient ? (
         // Mode 1: Selected Client Display
-        <div className="flex items-center justify-between w-full px-4 py-3 rounded-xl text-sm bg-slate-900/60 border border-indigo-500/50 text-slate-100 placeholder-slate-500">
+        <div className="flex items-center justify-between w-full px-4 py-3 rounded-xl text-sm bg-card border border-indigo-500/40 text-foreground placeholder-muted-foreground/60 transition-colors duration-300">
           <div className="flex flex-col text-left">
-            <span className="font-bold text-indigo-400">{selectedClient.nombre}</span>
-            <span className="text-[10px] text-slate-500 font-mono mt-0.5">ID Doc: {selectedClient.documentoId}</span>
+            <span className="font-bold text-indigo-600 dark:text-indigo-400">{selectedClient.nombre}</span>
+            <span className="text-[10px] text-muted-foreground font-mono mt-0.5">ID Doc: {selectedClient.documentoId}</span>
           </div>
           <button
             type="button"
             onClick={handleClearSelection}
-            className="text-xs font-bold text-slate-400 hover:text-rose-500 transition-colors bg-slate-950/40 border border-slate-800 px-3 py-1.5 rounded-lg cursor-pointer"
+            className="text-xs font-bold text-muted-foreground hover:text-rose-500 transition-all bg-card-muted border border-card-border px-3 py-1.5 rounded-lg cursor-pointer active:scale-95 duration-200"
           >
             Cambiar
           </button>
@@ -111,10 +117,10 @@ export default function AsyncCombobox({ value, onChange, error }: AsyncComboboxP
               setIsDropdownOpen(true);
             }}
             onFocus={() => setIsDropdownOpen(true)}
-            className={`w-full px-4 py-3 rounded-xl text-sm bg-slate-950 border text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 ${
+            className={`w-full px-4 py-3 rounded-xl text-sm bg-input-bg border text-foreground placeholder-muted-foreground/60 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all duration-250 ${
               error
-                ? 'border-rose-500/80 focus:border-rose-500 focus:ring-rose-500/10'
-                : 'border-slate-800 hover:border-slate-700/80 focus:border-indigo-500'
+                ? 'border-rose-500/85 focus:border-rose-500 focus:ring-rose-500/10'
+                : 'border-input-border hover:border-input-hover-border focus:border-indigo-500'
             }`}
           />
 
@@ -126,11 +132,11 @@ export default function AsyncCombobox({ value, onChange, error }: AsyncComboboxP
 
           {/* Search Dropdown */}
           {isDropdownOpen && (
-            <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-2xl flex flex-col divide-y divide-slate-800 max-h-64 overflow-y-auto">
+            <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-card border border-card-border rounded-xl overflow-hidden shadow-2xl flex flex-col divide-y divide-card-border max-h-64 overflow-y-auto">
               <div className="p-2 max-h-48 overflow-y-auto space-y-1">
                 {isLoading ? (
-                  <div className="flex justify-center items-center py-4 text-xs text-slate-400 gap-2 select-none">
-                    <svg className="animate-spin h-3.5 w-3.5 text-indigo-400" fill="none" viewBox="0 0 24 24">
+                  <div className="flex justify-center items-center py-4 text-xs text-muted-foreground gap-2 select-none">
+                    <svg className="animate-spin h-3.5 w-3.5 text-indigo-500 dark:text-indigo-400" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                     </svg>
@@ -142,14 +148,14 @@ export default function AsyncCombobox({ value, onChange, error }: AsyncComboboxP
                       key={client.id}
                       type="button"
                       onClick={() => handleSelectClient(client)}
-                      className="w-full text-left px-3 py-2 rounded-lg text-xs hover:bg-indigo-600/20 hover:text-indigo-400 transition-colors flex justify-between items-center cursor-pointer"
+                      className="w-full text-left px-3 py-2 rounded-lg text-xs hover:bg-indigo-500/10 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors flex justify-between items-center cursor-pointer"
                     >
-                      <span className="font-bold text-slate-200">{client.nombre}</span>
-                      <span className="font-mono text-slate-500 text-[10px]">Doc: {client.documentoId}</span>
+                      <span className="font-bold text-foreground/90">{client.nombre}</span>
+                      <span className="font-mono text-muted-foreground text-[10px]">Doc: {client.documentoId}</span>
                     </button>
                   ))
                 ) : (
-                  <div className="text-center py-4 text-xs text-slate-500 italic select-none">
+                  <div className="text-center py-4 text-xs text-muted-foreground/80 italic select-none">
                     No se encontraron clientes registrados
                   </div>
                 )}
@@ -159,13 +165,13 @@ export default function AsyncCombobox({ value, onChange, error }: AsyncComboboxP
               <button
                 type="button"
                 onClick={handleCreateNew}
-                className="w-full px-4 py-3 bg-slate-950 hover:bg-indigo-650 hover:text-white transition-all text-xs font-bold text-indigo-400 text-left flex items-center gap-1.5 select-none cursor-pointer"
+                className="w-full px-4 py-3 bg-card-muted hover:bg-indigo-600 hover:text-white transition-all text-xs font-bold text-indigo-600 dark:text-indigo-400 text-left flex items-center gap-1.5 select-none cursor-pointer"
               >
                 <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                {searchTerm.trim() ? (
-                  <span>Crear nuevo cliente: <span className="underline italic">"{searchTerm}"</span></span>
+                 {searchTerm.trim() ? (
+                  <span>Crear nuevo cliente: <span className="underline italic">&quot;{searchTerm}&quot;</span></span>
                 ) : (
                   <span>+ Registrar nuevo cliente</span>
                 )}

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axios';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
@@ -58,6 +58,7 @@ function EditClientModal({
       queryClient.invalidateQueries({ queryKey: ['clientes'] });
       onClose();
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onError: (err: any) => {
       setErrorMsg(err.response?.data?.error || 'Error al actualizar el cliente.');
     },
@@ -77,17 +78,17 @@ function EditClientModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-6 relative overflow-hidden animate-in zoom-in-95 duration-200 text-white">
+      <div className="w-full max-w-md bg-card border border-card-border rounded-2xl shadow-2xl p-6 relative overflow-hidden animate-in zoom-in-95 duration-200 text-foreground">
         {/* Glow */}
         <div className="absolute -top-24 -right-24 h-48 w-48 rounded-full bg-indigo-500/10 blur-[60px] pointer-events-none" />
 
-        <div className="flex justify-between items-center border-b border-slate-800 pb-4 mb-5">
-          <h2 className="text-lg font-bold tracking-tight bg-gradient-to-r from-indigo-200 to-indigo-400 bg-clip-text text-transparent">
+        <div className="flex justify-between items-center border-b border-card-border pb-4 mb-5">
+          <h2 className="text-lg font-bold tracking-tight bg-gradient-to-r from-indigo-900 to-indigo-600 dark:from-indigo-200 dark:to-indigo-400 bg-clip-text text-transparent">
             Editar Cliente
           </h2>
           <button
             onClick={onClose}
-            className="p-1 text-slate-400 hover:text-slate-200 transition-colors rounded-lg hover:bg-slate-800 cursor-pointer"
+            className="p-1 text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-card-muted cursor-pointer"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -142,7 +143,7 @@ function EditClientModal({
             error={errors.direccion?.message}
           />
 
-          <div className="flex justify-end gap-3 border-t border-slate-800 pt-4 mt-6">
+          <div className="flex justify-end gap-3 border-t border-card-border pt-4 mt-6">
             <Button type="button" variant="secondary" onClick={onClose} className="px-4 py-2 text-xs">
               Cancelar
             </Button>
@@ -175,6 +176,7 @@ function DeleteConfirmModal({
       queryClient.invalidateQueries({ queryKey: ['clientes'] });
       onClose();
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onError: (err: any) => {
       setErrorMsg(err.response?.data?.error || 'Error al eliminar el cliente.');
     },
@@ -188,7 +190,7 @@ function DeleteConfirmModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="w-full max-w-sm bg-slate-900 border border-rose-500/30 rounded-2xl shadow-2xl p-6 relative overflow-hidden animate-in zoom-in-95 duration-200 text-white">
+      <div className="w-full max-w-sm bg-card border border-rose-500/30 rounded-2xl shadow-2xl p-6 relative overflow-hidden animate-in zoom-in-95 duration-200 text-foreground">
         <div className="absolute -top-16 -right-16 h-36 w-36 rounded-full bg-rose-500/10 blur-[50px] pointer-events-none" />
 
         <div className="flex flex-col items-center text-center gap-3 mb-5">
@@ -198,12 +200,12 @@ function DeleteConfirmModal({
             </svg>
           </div>
           <div>
-            <h2 className="text-base font-bold text-slate-100">Eliminar Cliente</h2>
-            <p className="text-xs text-slate-400 mt-1">
+            <h2 className="text-base font-bold text-foreground">Eliminar Cliente</h2>
+            <p className="text-xs text-muted-foreground mt-1">
               ¿Estás seguro de que deseas eliminar a{' '}
-              <span className="font-bold text-slate-200">{client.nombre}</span>?
+              <span className="font-bold text-foreground">{client.nombre}</span>?
             </p>
-            <p className="text-xs text-slate-500 mt-1">Esta acción no se puede deshacer.</p>
+            <p className="text-xs text-muted-foreground/80 mt-1">Esta acción no se puede deshacer.</p>
           </div>
         </div>
 
@@ -230,6 +232,17 @@ function DeleteConfirmModal({
   );
 }
 
+const SkeletonRow = () => (
+  <TableRow className="animate-pulse">
+    <TableCell><div className="h-4 bg-card-muted rounded w-28" /></TableCell>
+    <TableCell><div className="h-4 bg-card-muted rounded w-40" /></TableCell>
+    <TableCell><div className="h-4 bg-card-muted rounded w-36" /></TableCell>
+    <TableCell><div className="h-4 bg-card-muted rounded w-24" /></TableCell>
+    <TableCell><div className="h-4 bg-card-muted rounded w-32" /></TableCell>
+    <TableCell className="text-right"><div className="ml-auto h-8 bg-card-muted/80 rounded w-24" /></TableCell>
+  </TableRow>
+);
+
 /* ───────────────────── ClientList ───────────────────── */
 export default function ClientList() {
   const [search, setSearch] = useState('');
@@ -252,23 +265,7 @@ export default function ClientList() {
     },
   });
 
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return '—';
-    return new Date(dateString).toLocaleDateString('es-ES', {
-      year: 'numeric', month: 'short', day: 'numeric',
-    });
-  };
-
-  const SkeletonRow = () => (
-    <TableRow className="animate-pulse">
-      <TableCell><div className="h-4 bg-slate-800/80 rounded w-28" /></TableCell>
-      <TableCell><div className="h-4 bg-slate-800/80 rounded w-40" /></TableCell>
-      <TableCell><div className="h-4 bg-slate-800/80 rounded w-36" /></TableCell>
-      <TableCell><div className="h-4 bg-slate-800/80 rounded w-24" /></TableCell>
-      <TableCell><div className="h-4 bg-slate-800/80 rounded w-32" /></TableCell>
-      <TableCell className="text-right"><div className="ml-auto h-8 bg-slate-800/80 rounded w-24" /></TableCell>
-    </TableRow>
-  );
+  
 
   if (error) {
     return (
@@ -283,7 +280,7 @@ export default function ClientList() {
       {/* Search bar */}
       <div className="relative w-full max-w-sm">
         <svg
-          className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none"
+          className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none"
           fill="none" stroke="currentColor" viewBox="0 0 24 24"
         >
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -294,12 +291,12 @@ export default function ClientList() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Buscar por nombre o documento..."
-          className="w-full pl-9 pr-4 py-2 text-sm rounded-xl bg-slate-900 border border-slate-800 text-slate-200 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500/60 transition-all"
+          className="w-full pl-9 pr-4 py-2 text-sm rounded-xl bg-input-bg border border-input-border text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500/60 transition-all"
         />
         {search && (
           <button
             onClick={() => setSearch('')}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
           >
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -331,42 +328,42 @@ export default function ClientList() {
           ) : clients && clients.length > 0 ? (
             clients.map((client) => (
               <TableRow key={client.id}>
-                <TableCell className="font-mono text-xs text-indigo-400 font-semibold tracking-wider select-all">
+                <TableCell className="font-mono text-xs text-indigo-600 dark:text-indigo-400 font-bold tracking-wider select-all animate-in fade-in duration-200">
                   {client.documentoId}
                 </TableCell>
-                <TableCell className="font-bold text-slate-200">
+                <TableCell className="font-bold text-foreground">
                   {client.nombre}
                 </TableCell>
-                <TableCell className="text-xs text-slate-400">
+                <TableCell className="text-xs text-muted-foreground">
                   {client.email ? (
                     <a
                       href={`mailto:${client.email}`}
-                      className="hover:text-indigo-400 transition-colors"
+                      className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
                     >
                       {client.email}
                     </a>
                   ) : (
-                    <span className="text-slate-600 italic">—</span>
+                    <span className="text-muted-foreground/60 italic">—</span>
                   )}
                 </TableCell>
-                <TableCell className="text-xs text-slate-400">
-                  {client.telefono || <span className="text-slate-600 italic">—</span>}
+                <TableCell className="text-xs text-muted-foreground">
+                  {client.telefono || <span className="text-muted-foreground/60 italic">—</span>}
                 </TableCell>
-                <TableCell className="text-xs text-slate-400 max-w-[160px] truncate">
-                  {client.direccion || <span className="text-slate-600 italic">—</span>}
+                <TableCell className="text-xs text-muted-foreground max-w-[160px] truncate">
+                  {client.direccion || <span className="text-muted-foreground/60 italic">—</span>}
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-2">
                     <Button
                       variant="secondary"
                       onClick={() => setEditingClient(client)}
-                      className="px-3.5 py-1.5 text-xs font-bold bg-slate-800 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all select-none cursor-pointer"
+                      className="px-3.5 py-1.5 text-xs font-bold"
                     >
                       Editar
                     </Button>
                     <button
                       onClick={() => setDeletingClient(client)}
-                      className="px-3.5 py-1.5 text-xs font-bold rounded-xl border border-rose-500/20 bg-rose-500/10 text-rose-400 hover:bg-rose-600 hover:text-white hover:border-rose-600 transition-all select-none cursor-pointer"
+                      className="px-3.5 py-1.5 text-xs font-bold rounded-xl border border-rose-500/20 bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-600 hover:text-white hover:border-rose-600 transition-all select-none cursor-pointer duration-200 active:scale-95"
                     >
                       Eliminar
                     </button>
@@ -376,14 +373,14 @@ export default function ClientList() {
             ))
           ) : (
             <TableRow>
-              <TableCell colSpan={6} className="text-center py-14 text-slate-500">
-                <svg className="mx-auto h-12 w-12 text-slate-700 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <TableCell colSpan={6} className="text-center py-14 text-muted-foreground">
+                <svg className="mx-auto h-12 w-12 text-muted-foreground/50 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
-                <p className="text-sm font-semibold">
+                <p className="text-sm font-bold">
                   {debouncedSearch ? `Sin resultados para "${debouncedSearch}"` : 'No hay clientes registrados'}
                 </p>
-                <p className="text-xs text-slate-600 mt-1">
+                <p className="text-xs text-muted-foreground/70 mt-1">
                   {debouncedSearch ? 'Intenta con otro término de búsqueda' : 'Registra tu primer cliente para comenzar'}
                 </p>
               </TableCell>

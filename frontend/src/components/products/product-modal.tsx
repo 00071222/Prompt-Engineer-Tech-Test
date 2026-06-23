@@ -3,7 +3,7 @@
 import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useProductStore, Product } from '@/store/product-store';
+import { useProductStore } from '@/store/product-store';
 import api from '@/lib/axios';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -88,6 +88,7 @@ export default function ProductModal() {
       queryClient.invalidateQueries({ queryKey: ['productos'] });
       closeModal();
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onError: (err: any) => {
       alert(err.response?.data?.error || 'Error al guardar el producto.');
     },
@@ -101,17 +102,17 @@ export default function ProductModal() {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-6 relative overflow-hidden animate-in zoom-in-95 duration-200 text-white">
+      <div className="w-full max-w-lg bg-card border border-card-border rounded-2xl shadow-2xl p-6 relative overflow-hidden animate-in zoom-in-95 duration-200 text-foreground">
         {/* Glow decoration */}
         <div className="absolute -top-24 -left-24 h-48 w-48 rounded-full bg-indigo-500/10 blur-[60px] pointer-events-none"></div>
 
-        <div className="flex justify-between items-center border-b border-slate-800 pb-4 mb-5">
-          <h2 className="text-lg font-bold tracking-tight bg-gradient-to-r from-indigo-200 to-indigo-400 bg-clip-text text-transparent">
+        <div className="flex justify-between items-center border-b border-card-border pb-4 mb-5">
+          <h2 className="text-lg font-bold tracking-tight bg-gradient-to-r from-indigo-900 to-indigo-650 dark:from-indigo-200 dark:to-indigo-400 bg-clip-text text-transparent">
             {isEditMode ? 'Editar Producto' : 'Crear Nuevo Producto'}
           </h2>
           <button
             onClick={closeModal}
-            className="p-1 text-slate-400 hover:text-slate-200 transition-colors rounded-lg hover:bg-slate-800 cursor-pointer"
+            className="p-1 text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-card-muted cursor-pointer"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -186,14 +187,14 @@ export default function ProductModal() {
             {/* Descripción */}
             <div className="sm:col-span-2">
               <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider select-none">
+                <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider select-none">
                   Descripción
                 </label>
                 <textarea
                   placeholder="Detalles adicionales del producto (opcional)"
                   {...register('descripcion')}
                   rows={2}
-                  className="w-full px-4 py-3 rounded-xl text-sm bg-slate-950 border border-slate-800 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all duration-200 resize-none"
+                  className="w-full px-4 py-3 rounded-xl text-sm bg-input-bg border border-input-border text-foreground placeholder-muted-foreground/60 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all duration-200 resize-none"
                 />
               </div>
             </div>
@@ -204,15 +205,15 @@ export default function ProductModal() {
                 id="activo"
                 type="checkbox"
                 {...register('activo')}
-                className="w-4.5 h-4.5 rounded border-slate-800 bg-slate-950 text-indigo-650 focus:ring-indigo-500/20 focus:ring-offset-slate-900 focus:outline-none transition-colors accent-indigo-600"
+                className="w-4.5 h-4.5 rounded border-card-border bg-input-bg text-indigo-600 focus:ring-indigo-500/20 focus:outline-none transition-colors accent-indigo-600"
               />
-              <label htmlFor="activo" className="text-xs font-bold text-slate-350 cursor-pointer">
+              <label htmlFor="activo" className="text-xs font-bold text-muted-foreground cursor-pointer">
                 Producto Activo (Disponible para la venta)
               </label>
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 border-t border-slate-800 pt-4 mt-6">
+          <div className="flex justify-end gap-3 border-t border-card-border pt-4 mt-6">
             <Button type="button" variant="secondary" onClick={closeModal} className="px-4 py-2 text-xs">
               Cancelar
             </Button>

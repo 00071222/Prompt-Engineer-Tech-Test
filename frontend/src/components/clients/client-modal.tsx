@@ -37,7 +37,9 @@ export default function ClientModal() {
   // Pre-fill name from combobox search term when modal opens
   useEffect(() => {
     if (isOpen) {
-      setErrorMsg(null);
+      requestAnimationFrame(() => {
+        setErrorMsg(null);
+      });
       reset({
         documentoId: '',
         nombre: initialNombre,
@@ -67,6 +69,7 @@ export default function ClientModal() {
       }
       closeModal();
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onError: (err: any) => {
       setErrorMsg(err.response?.data?.error || 'Error al registrar el cliente.');
     },
@@ -81,17 +84,17 @@ export default function ClientModal() {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-6 relative overflow-hidden animate-in zoom-in-95 duration-200 text-white">
+      <div className="w-full max-w-md bg-card border border-card-border rounded-2xl shadow-2xl p-6 relative overflow-hidden animate-in zoom-in-95 duration-200 text-foreground">
         {/* Glow decorative */}
         <div className="absolute -top-24 -left-24 h-48 w-48 rounded-full bg-indigo-500/10 blur-[60px] pointer-events-none"></div>
 
-        <div className="flex justify-between items-center border-b border-slate-800 pb-4 mb-5">
-          <h2 className="text-lg font-bold tracking-tight bg-gradient-to-r from-indigo-200 to-indigo-400 bg-clip-text text-transparent">
+        <div className="flex justify-between items-center border-b border-card-border pb-4 mb-5">
+          <h2 className="text-lg font-bold tracking-tight bg-gradient-to-r from-indigo-900 to-indigo-600 dark:from-indigo-200 dark:to-indigo-400 bg-clip-text text-transparent">
             Crear Nuevo Cliente
           </h2>
           <button
             onClick={closeModal}
-            className="p-1 text-slate-400 hover:text-slate-200 transition-colors rounded-lg hover:bg-slate-800 cursor-pointer"
+            className="p-1 text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-card-muted cursor-pointer"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -100,7 +103,7 @@ export default function ClientModal() {
         </div>
 
         {errorMsg && (
-          <div className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs font-semibold text-rose-450 animate-in fade-in duration-150">
+          <div className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs font-semibold text-rose-600 dark:text-rose-400 animate-in fade-in duration-150">
             {errorMsg}
           </div>
         )}
@@ -150,7 +153,7 @@ export default function ClientModal() {
             error={errors.telefono?.message}
           />
 
-          <div className="flex justify-end gap-3 border-t border-slate-800 pt-4 mt-6">
+          <div className="flex justify-end gap-3 border-t border-card-border pt-4 mt-6">
             <Button type="button" variant="secondary" onClick={closeModal} className="px-4 py-2 text-xs">
               Cancelar
             </Button>
