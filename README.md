@@ -87,6 +87,10 @@ El panel de control estará accesible en: **`http://localhost:3000`**
 
 ## 🔑 Credenciales de Seed
 - **Email**:
-<pre>admin@empresa.com</pre>
+```bash
+admin@empresa.com
+```
 - **Password**:
-<pre>admin123</pre>
+```bash
+admin123
+```
